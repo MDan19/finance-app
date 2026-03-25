@@ -83,7 +83,6 @@ model Account {
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
   transactions    Transaction[] @relation("AccountTransactions")
-  transfersFrom   Transaction[] @relation("TransferFrom")
   transfersTo     Transaction[] @relation("TransferTo")
 
   @@map("accounts")
@@ -195,9 +194,8 @@ model Transaction {
   createdAt           DateTime        @default(now()) @map("created_at")
   updatedAt           DateTime        @updatedAt @map("updated_at")
 
-  account             Account         @relation("AccountTransactions", fields: [accountId], references: [id])
-  toAccount           Account?        @relation("TransferTo", fields: [toAccountId], references: [id])
-  fromAccount         Account?        @relation("TransferFrom", fields: [accountId], references: [id])
+  account             Account         @relation("AccountTransactions", fields: [accountId], references: [id], map: "tx_account_fkey")
+  toAccount           Account?        @relation("TransferTo", fields: [toAccountId], references: [id], map: "tx_to_account_fkey")
   category            Category?       @relation(fields: [categoryId], references: [id])
   linkedTransaction   Transaction?    @relation("LinkedTransactions", fields: [linkedTransactionId], references: [id])
   linkedBy            Transaction[]   @relation("LinkedTransactions")
