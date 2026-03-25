@@ -7,7 +7,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository_owner }}/finance-app
 
 jobs:
   build-backend:
@@ -15,8 +14,12 @@ jobs:
     permissions:
       contents: read
       packages: write
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Normalize repository owner
+        run: echo "OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -31,16 +34,20 @@ jobs:
           context: ./backend
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/finance-app-backend:latest
-            ghcr.io/${{ github.repository_owner }}/finance-app-backend:${{ github.sha }}
+            ghcr.io/${{ env.OWNER_LC }}/finance-app-backend:latest
+            ghcr.io/${{ env.OWNER_LC }}/finance-app-backend:${{ github.sha }}
 
   build-frontend:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Normalize repository owner
+        run: echo "OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -55,7 +62,7 @@ jobs:
           context: ./frontend
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/finance-app-frontend:latest
-            ghcr.io/${{ github.repository_owner }}/finance-app-frontend:${{ github.sha }}
+            ghcr.io/${{ env.OWNER_LC }}/finance-app-frontend:latest
+            ghcr.io/${{ env.OWNER_LC }}/finance-app-frontend:${{ github.sha }}
           build-args: |
             VITE_API_URL=
