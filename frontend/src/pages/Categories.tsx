@@ -82,7 +82,7 @@ export default function Categories() {
 
       {tab === 'summary' && (
         <SummaryView categories={categories} spendMap={spendMap} totalSpend={totalSpend}
-          onEdit={cat => { setEditCat(cat); setShowCatModal(true) }}
+          onEdit={(cat: Category) => { setEditCat(cat); setShowCatModal(true) }}
           onDelete={handleDeleteCat}
         />
       )}
