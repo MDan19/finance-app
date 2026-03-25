@@ -184,7 +184,7 @@ router.get('/bucket-compliance', async (req, res) => {
     const income = Number(monthlyIncome?.amount ?? 0);
 
     const result = buckets.map(bucket => {
-      const categoryIds = (bucket.categories as number[]) || [];
+      const categoryIds = ((bucket.categories as unknown) as number[]) || [];
       const spent = categoryIds.reduce((sum, id) => sum + (spendMap[id] || 0), 0);
       const budgeted = income * (Number(bucket.targetPercent) / 100);
       return {
