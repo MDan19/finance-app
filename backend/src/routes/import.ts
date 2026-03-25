@@ -9,7 +9,6 @@ router.use(authenticate);
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-// Get import profiles
 router.get('/profiles', async (_req, res) => {
   const profiles = await prisma.importProfile.findMany({ orderBy: { name: 'asc' } });
   res.json(profiles);
@@ -51,44 +50,30 @@ router.delete('/profiles/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// Preview CSV before import
 router.post('/preview', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
     const content = req.file.buffer.toString('utf-8');
     const delimiter = (req.body.delimiter as string) || ',';
-
-    // Parse CSV manually
     const lines = content.split('\n').filter(l => l.trim());
     const headers = lines[0].split(delimiter).map(h => h.trim().replace(/"/g, ''));
-
     const rows = lines.slice(1, 21).map(line => {
       const values = line.split(delimiter).map(v => v.trim().replace(/"/g, ''));
       const row: Record<string, string> = {};
       headers.forEach((h, i) => { row[h] = values[i] || ''; });
       return row;
     });
-
     res.json({ headers, rows, totalRows: lines.length - 1 });
   } catch (err) {
     res.status(500).json({ error: 'Failed to parse file' });
   }
 });
 
-// Execute import
 router.post('/execute', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-    const {
-      accountId,
-      profileId,
-      columnMap: columnMapStr,
-      delimiter: delimiterStr,
-      dateFormat,
-    } = req.body;
-
+    const { accountId, columnMap: columnMapStr, delimiter: delimiterStr } = req.body;
     const columnMap = JSON.parse(columnMapStr);
     const delimiter = delimiterStr || ',';
     const baseCurrency = process.env.BASE_CURRENCY || 'EUR';
@@ -97,22 +82,18 @@ router.post('/execute', upload.single('file'), async (req, res) => {
     const lines = content.split('\n').filter(l => l.trim());
     const headers = lines[0].split(delimiter).map(h => h.trim().replace(/"/g, ''));
 
-    // Get keyword rules for auto-categorization
     const keywordRules = await prisma.keywordRule.findMany({
       where: { isActive: true },
       orderBy: { priority: 'desc' },
     });
 
-    // Get account
     const account = await prisma.account.findUnique({ where: { id: +accountId } });
     if (!account) return res.status(404).json({ error: 'Account not found' });
 
-    // Create import batch
     const batch = await prisma.importBatch.create({
       data: {
         filename: req.file.originalname,
         accountId: +accountId,
-        profileId: profileId ? +profileId : null,
         totalRows: lines.length - 1,
         status: 'pending',
       },
@@ -134,29 +115,21 @@ router.post('/execute', upload.single('file'), async (req, res) => {
 
       if (!dateRaw || !amountRaw) { skipped++; continue; }
 
-      // Parse date
-      let date: Date;
-      try {
-        date = new Date(dateRaw);
-        if (isNaN(date.getTime())) { skipped++; continue; }
-      } catch { skipped++; continue; }
+      const date = new Date(dateRaw);
+      if (isNaN(date.getTime())) { skipped++; continue; }
 
-      // Parse amount
       const amount = parseFloat(amountRaw.replace(',', '.').replace(/[^0-9.-]/g, ''));
       if (isNaN(amount)) { skipped++; continue; }
 
-      // Duplicate check
       const existing = await prisma.transaction.findFirst({
         where: {
           accountId: +accountId,
-          date: { gte: new Date(date.setHours(0,0,0,0)), lte: new Date(date.setHours(23,59,59,999)) },
           amount: Math.abs(amount),
           counterparty: description || null,
         },
       });
       if (existing) { skipped++; continue; }
 
-      // Auto-categorize
       let categoryId: number | null = null;
       for (const rule of keywordRules) {
         if (description.toLowerCase().includes(rule.keyword.toLowerCase())) {
@@ -165,7 +138,6 @@ router.post('/execute', upload.single('file'), async (req, res) => {
         }
       }
 
-      // Exchange rate
       let amountEur = Math.abs(amount);
       let exchangeRate = 1;
       if (currency !== baseCurrency) {
@@ -177,7 +149,7 @@ router.post('/execute', upload.single('file'), async (req, res) => {
 
       const tx = await prisma.transaction.create({
         data: {
-          type: type as any,
+          type: type as 'EXPENSE' | 'INCOME',
           date: new Date(dateRaw),
           accountId: +accountId,
           amount: Math.abs(amount),
@@ -200,23 +172,15 @@ router.post('/execute', upload.single('file'), async (req, res) => {
       data: { importedRows: imported, skippedRows: skipped, status: 'done' },
     });
 
-    res.json({
-      batchId: batch.id,
-      imported,
-      skipped,
-      needsCategory: needsCategory.length,
-      needsCategoryIds: needsCategory,
-    });
+    res.json({ batchId: batch.id, imported, skipped, needsCategory: needsCategory.length });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Import failed' });
   }
 });
 
-// Get keyword rules
 router.get('/keyword-rules', async (_req, res) => {
   const rules = await prisma.keywordRule.findMany({
-    include: { category: { select: { id: true, name: true, color: true, icon: true } } },
     orderBy: [{ priority: 'desc' }, { keyword: 'asc' }],
   });
   res.json(rules);
@@ -226,7 +190,6 @@ router.post('/keyword-rules', async (req, res) => {
   const { keyword, categoryId, priority } = req.body;
   const rule = await prisma.keywordRule.create({
     data: { keyword, categoryId: +categoryId, priority: priority || 0 },
-    include: { category: { select: { id: true, name: true, color: true, icon: true } } },
   });
   res.status(201).json(rule);
 });
@@ -236,7 +199,6 @@ router.put('/keyword-rules/:id', async (req, res) => {
   const rule = await prisma.keywordRule.update({
     where: { id: +req.params.id },
     data: { keyword, categoryId: +categoryId, priority, isActive },
-    include: { category: true },
   });
   res.json(rule);
 });
@@ -246,10 +208,8 @@ router.delete('/keyword-rules/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// Import history
 router.get('/batches', async (_req, res) => {
   const batches = await prisma.importBatch.findMany({
-    include: { account: { select: { id: true, name: true } } },
     orderBy: { createdAt: 'desc' },
     take: 50,
   });
