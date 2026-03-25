@@ -1,0 +1,60 @@
+version: "3.9"
+
+# ============================================================
+#  Finance App — Portainer Stack
+#  Замени YOUR_GITHUB_USERNAME на своё имя пользователя GitHub
+# ============================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: finance_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: financedb
+      POSTGRES_USER: finance
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_strong_password}
+    volumes:
+      - /volume1/docker/finance-app/postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finance -d financedb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finance_net
+
+  backend:
+    image: ghcr.io/YOUR_GITHUB_USERNAME/finance-app-backend:latest
+    container_name: finance_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://finance:${POSTGRES_PASSWORD:-changeme_strong_password}@postgres:5432/financedb
+      JWT_SECRET: ${JWT_SECRET:-replace_this_with_random_string}
+      JWT_EXPIRES_IN: 7d
+      BASE_CURRENCY: EUR
+      EXCHANGE_API_KEY: ${EXCHANGE_API_KEY:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      NODE_ENV: production
+      PORT: 4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - finance_net
+
+  frontend:
+    image: ghcr.io/YOUR_GITHUB_USERNAME/finance-app-frontend:latest
+    container_name: finance_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - finance_net
+
+networks:
+  finance_net:
+    driver: bridge
