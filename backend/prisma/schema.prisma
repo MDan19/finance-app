@@ -1,8 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
@@ -11,8 +8,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── User ───────────────────────────────────────────────────────────────────
-
 model User {
   id           Int      @id @default(autoincrement())
   username     String   @unique
@@ -20,11 +15,8 @@ model User {
   baseCurrency String   @default("EUR") @map("base_currency")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
-
   @@map("users")
 }
-
-// ─── Exchange Rates ──────────────────────────────────────────────────────────
 
 model ExchangeRate {
   id           Int      @id @default(autoincrement())
@@ -32,15 +24,12 @@ model ExchangeRate {
   toCurrency   String   @map("to_currency")
   rate         Decimal  @db.Decimal(20, 8)
   date         DateTime @default(now())
-  source       String   @default("api") // api | manual
+  source       String   @default("api")
   createdAt    DateTime @default(now()) @map("created_at")
-
   @@unique([fromCurrency, toCurrency, date])
   @@index([fromCurrency, toCurrency])
   @@map("exchange_rates")
 }
-
-// ─── Accounts ────────────────────────────────────────────────────────────────
 
 enum AccountType {
   BANK
@@ -63,33 +52,22 @@ model Account {
   isActive        Boolean     @default(true) @map("is_active")
   notes           String?
   currentBalance  Decimal     @default(0) @db.Decimal(20, 2) @map("current_balance")
-
-  // Credit card fields
   creditLimit     Decimal?    @db.Decimal(20, 2) @map("credit_limit")
   currentDebt     Decimal?    @default(0) @db.Decimal(20, 2) @map("current_debt")
-
-  // Loan / mortgage fields
   originalAmount  Decimal?    @db.Decimal(20, 2) @map("original_amount")
   remainingAmount Decimal?    @db.Decimal(20, 2) @map("remaining_amount")
   monthlyPayment  Decimal?    @db.Decimal(20, 2) @map("monthly_payment")
   interestRate    Decimal?    @db.Decimal(6, 4) @map("interest_rate")
   endDate         DateTime?   @map("end_date")
   startDate       DateTime?   @map("start_date")
-
-  // Personal debt / credit fields
   counterpartyName String?    @map("counterparty_name")
-  direction        String?    // owe | owed
-
+  direction        String?
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
-
   transactions    Transaction[] @relation("AccountTransactions")
   transfersTo     Transaction[] @relation("TransferTo")
-
   @@map("accounts")
 }
-
-// ─── Categories ──────────────────────────────────────────────────────────────
 
 model Category {
   id           Int        @id @default(autoincrement())
@@ -101,49 +79,69 @@ model Category {
   isActive     Boolean    @default(true) @map("is_active")
   sortOrder    Int        @default(0) @map("sort_order")
   createdAt    DateTime   @default(now()) @map("created_at")
-
   parent       Category?  @relation("CategoryTree", fields: [parentId], references: [id])
   children     Category[] @relation("CategoryTree")
   transactions Transaction[]
   budgetPlans  BudgetPlan[]
-
+  planItems    PlanItem[]
   @@map("categories")
 }
-
-// ─── Budget Plans ────────────────────────────────────────────────────────────
 
 model BudgetPlan {
   id         Int      @id @default(autoincrement())
   categoryId Int      @map("category_id")
   year       Int
-  month      Int      // 1-12
+  month      Int
   amount     Decimal  @db.Decimal(20, 2)
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
-
   category   Category @relation(fields: [categoryId], references: [id])
-
   @@unique([categoryId, year, month])
   @@index([year, month])
   @@map("budget_plans")
 }
 
-// ─── Budget Rule Buckets ──────────────────────────────────────────────────────
+model PlanItem {
+  id           Int      @id @default(autoincrement())
+  name         String
+  groupName    String   @map("group_name")
+  paymentType  String   @default("Monthly") @map("payment_type")
+  categoryId   Int?     @map("category_id")
+  keywordMatch String?  @map("keyword_match")
+  sortOrder    Int      @default(0) @map("sort_order")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  category     Category? @relation(fields: [categoryId], references: [id])
+  amounts      PlanAmount[]
+  @@map("plan_items")
+}
+
+model PlanAmount {
+  id          Int      @id @default(autoincrement())
+  planItemId  Int      @map("plan_item_id")
+  year        Int
+  month       Int
+  amount      Decimal  @db.Decimal(20, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  planItem    PlanItem @relation(fields: [planItemId], references: [id], onDelete: Cascade)
+  @@unique([planItemId, year, month])
+  @@index([year, month])
+  @@map("plan_amounts")
+}
 
 model BudgetBucket {
   id            Int      @id @default(autoincrement())
   name          String
   targetPercent Decimal  @db.Decimal(5, 2) @map("target_percent")
-  categories    String[] // array of category ids
+  categories    Int[]
   color         String   @default("#6366f1")
   sortOrder     Int      @default(0) @map("sort_order")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
-
   @@map("budget_buckets")
 }
-
-// ─── Monthly Income Plan ──────────────────────────────────────────────────────
 
 model MonthlyIncome {
   id        Int      @id @default(autoincrement())
@@ -153,12 +151,9 @@ model MonthlyIncome {
   currency  String   @default("EUR")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
   @@unique([year, month])
   @@map("monthly_income")
 }
-
-// ─── Transactions ─────────────────────────────────────────────────────────────
 
 enum TransactionType {
   EXPENSE
@@ -181,35 +176,28 @@ model Transaction {
   incomeSource        String?         @map("income_source")
   counterparty        String?
   note                String?
-  source              String          @default("manual") // manual | csv_import
+  source              String          @default("manual")
   linkedTransactionId Int?            @map("linked_transaction_id")
-  compensationSource  String?         @map("compensation_source") // Tax | Energy | Cashback | Other
-
-  // Transfer fields
+  compensationSource  String?         @map("compensation_source")
   toAccountId         Int?            @map("to_account_id")
   toAmount            Decimal?        @db.Decimal(20, 2) @map("to_amount")
   toCurrency          String?         @map("to_currency")
   toExchangeRate      Decimal?        @db.Decimal(20, 8) @map("to_exchange_rate")
-
   importBatchId       Int?            @map("import_batch_id")
   createdAt           DateTime        @default(now()) @map("created_at")
   updatedAt           DateTime        @updatedAt @map("updated_at")
-
   account             Account         @relation("AccountTransactions", fields: [accountId], references: [id], map: "tx_account_fkey")
   toAccount           Account?        @relation("TransferTo", fields: [toAccountId], references: [id], map: "tx_to_account_fkey")
   category            Category?       @relation(fields: [categoryId], references: [id])
   linkedTransaction   Transaction?    @relation("LinkedTransactions", fields: [linkedTransactionId], references: [id])
   linkedBy            Transaction[]   @relation("LinkedTransactions")
   importBatch         ImportBatch?    @relation(fields: [importBatchId], references: [id])
-
   @@index([date])
   @@index([accountId])
   @@index([categoryId])
   @@index([type])
   @@map("transactions")
 }
-
-// ─── CSV Import ───────────────────────────────────────────────────────────────
 
 model ImportBatch {
   id           Int      @id @default(autoincrement())
@@ -219,12 +207,10 @@ model ImportBatch {
   totalRows    Int      @map("total_rows")
   importedRows Int      @default(0) @map("imported_rows")
   skippedRows  Int      @default(0) @map("skipped_rows")
-  status       String   @default("pending") // pending | done | failed
+  status       String   @default("pending")
   createdAt    DateTime @default(now()) @map("created_at")
-
   transactions Transaction[]
   profile      ImportProfile? @relation(fields: [profileId], references: [id])
-
   @@map("import_batches")
 }
 
@@ -234,13 +220,11 @@ model ImportProfile {
   bankName    String?  @map("bank_name")
   delimiter   String   @default(",")
   encoding    String   @default("UTF-8")
-  columnMap   Json     @map("column_map") // { date, amount, description, currency, ... }
+  columnMap   Json     @map("column_map")
   dateFormat  String   @default("YYYY-MM-DD") @map("date_format")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
-
   batches     ImportBatch[]
-
   @@map("import_profiles")
 }
 
@@ -251,12 +235,9 @@ model KeywordRule {
   isActive   Boolean  @default(true) @map("is_active")
   priority   Int      @default(0)
   createdAt  DateTime @default(now()) @map("created_at")
-
   @@index([keyword])
   @@map("keyword_rules")
 }
-
-// ─── Scheduled Payments ───────────────────────────────────────────────────────
 
 model ScheduledPayment {
   id          Int      @id @default(autoincrement())
@@ -265,11 +246,10 @@ model ScheduledPayment {
   categoryId  Int?     @map("category_id")
   amount      Decimal  @db.Decimal(20, 2)
   currency    String   @default("EUR")
-  dueDay      Int      @map("due_day") // day of month 1-31
+  dueDay      Int      @map("due_day")
   isActive    Boolean  @default(true) @map("is_active")
   notes       String?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
-
   @@map("scheduled_payments")
 }
