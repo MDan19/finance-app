@@ -30,7 +30,7 @@ export default function Login() {
             <TrendingUp className="w-7 h-7 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">FinanceApp</h1>
+            <h1 className="text-xl font-bold text-white">MyFinance</h1>
             <p className="text-xs text-gray-500">Personal Finance Manager</p>
           </div>
         </div>
