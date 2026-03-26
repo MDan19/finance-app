@@ -118,7 +118,11 @@ router.post('/execute', upload.single('file'), async (req, res) => {
       const date = new Date(dateRaw);
       if (isNaN(date.getTime())) { skipped++; continue; }
 
-      const amount = parseFloat(amountRaw.replace(',', '.').replace(/[^0-9.-]/g, ''));
+      // Handle European number format: 1 052,55 or 740,66
+      const amountClean = amountRaw
+        .replace(/\.(?=\d{3})/g, '')  // remove thousand dots: "1.052,55" → "1052,55"
+        .replace(',', '.');            // decimal comma to dot: "1052,55" → "1052.55"
+      const amount = parseFloat(amountClean);
       if (isNaN(amount)) { skipped++; continue; }
 
       const existing = await prisma.transaction.findFirst({
