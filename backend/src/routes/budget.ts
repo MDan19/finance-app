@@ -160,5 +160,28 @@ router.put('/monthly-income/:year/:month', async (req, res) => {
     create: { year: +year, month: +month, amount, currency: currency || 'EUR' },
   }));
 });
-
+router.get('/income-facts/:year', async (req, res) => {
+  try {
+    const year = +req.params.year;
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        date: { gte: new Date(`${year}-01-01`), lte: new Date(`${year}-12-31T23:59:59`) },
+        type: { in: ['INCOME', 'COMPENSATION'] },
+      },
+      select: { incomeSource: true, compensationSource: true, amountEur: true, amount: true, date: true, type: true },
+    });
+    const facts: Record<string, Record<number, number>> = {};
+    for (const tx of transactions) {
+      const source = tx.type === 'COMPENSATION'
+        ? `Compensation (${tx.compensationSource || 'Other'})`
+        : (tx.incomeSource || 'Other income');
+      const month = new Date(tx.date).getMonth() + 1;
+      if (!facts[source]) facts[source] = {};
+      facts[source][month] = (facts[source][month] || 0) + Number(tx.amountEur ?? tx.amount ?? 0);
+    }
+    res.json(facts);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch income facts' });
+  }
+});
 export default router;
