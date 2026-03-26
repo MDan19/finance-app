@@ -29,7 +29,7 @@ export default function Layout() {
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-white">FinanceApp</span>
+            <span className="font-bold text-white">MyFinance</span>
           </div>
         </div>
 
