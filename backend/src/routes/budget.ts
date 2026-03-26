@@ -85,7 +85,7 @@ router.get('/plan-facts/:year', async (req, res) => {
     const year = +req.params.year;
     const items = await prisma.planItem.findMany({ where: { isActive: true } });
     const transactions = await prisma.transaction.findMany({
-      where: { date: { gte: new Date(`${year}-01-01`), lte: new Date(`${year}-12-31T23:59:59`) }, type: { in: ['EXPENSE', 'TRANSFER'] } },
+      where: { date: { gte: new Date(`${year}-01-01`), lte: new Date(`${year}-12-31T23:59:59`) }, type: { in: ['EXPENSE', 'TRANSFER', 'INCOME', 'COMPENSATION'] },
       select: { categoryId: true, amountEur: true, amount: true, date: true, counterparty: true, note: true },
     });
     const facts: Record<number, Record<number, number>> = {};
@@ -100,7 +100,10 @@ router.get('/plan-facts/:year', async (req, res) => {
           const searchStr = `${tx.counterparty || ''} ${tx.note || ''}`.toLowerCase();
           if (keywords.some((kw: string) => kw && searchStr.includes(kw))) matches = true;
         }
-        if (matches) facts[item.id][month] = (facts[item.id][month] || 0) + Number(tx.amountEur ?? tx.amount ?? 0);
+        if (matches) {
+        const amt = Number(tx.amountEur ?? tx.amount ?? 0);
+        facts[item.id][month] = (facts[item.id][month] || 0) + amt;
+        }
       }
     }
     res.json(facts);
