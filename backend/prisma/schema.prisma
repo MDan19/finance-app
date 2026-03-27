@@ -183,6 +183,7 @@ model Transaction {
   toAmount            Decimal?        @db.Decimal(20, 2) @map("to_amount")
   toCurrency          String?         @map("to_currency")
   toExchangeRate      Decimal?        @db.Decimal(20, 8) @map("to_exchange_rate")
+  tags                String[]        @default([])
   importBatchId       Int?            @map("import_batch_id")
   createdAt           DateTime        @default(now()) @map("created_at")
   updatedAt           DateTime        @updatedAt @map("updated_at")
