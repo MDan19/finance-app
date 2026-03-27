@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Plus, Edit2, Trash2, ChevronRight, X } from 'lucide-react'
-import { categoriesApi, analyticsApi } from '../api'
+import { categoriesApi, analyticsApi, budgetApi } from '../api'
 import { Category } from '../types'
 import { formatEur, MONTHS } from '../utils/format'
 import Modal from '../components/Modal'
@@ -252,7 +252,6 @@ function AnnualPlanView({ categories }: { categories: Category[] }) {
   const [editing, setEditing] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
 
-  import { budgetApi } from '../api'
 
   const load = async () => {
     setLoading(true)
