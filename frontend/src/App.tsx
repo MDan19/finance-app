@@ -8,6 +8,7 @@ import Transactions from './pages/Transactions'
 import Categories from './pages/Categories'
 import Settings from './pages/Settings'
 import Import from './pages/Import'
+import Accounts from './pages/Accounts'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuthStore()
@@ -35,6 +36,7 @@ export default function App() {
           }
         >
           <Route index element={<Dashboard />} />
+          <Route path="accounts" element={<Accounts />} />
           <Route path="transactions" element={<Transactions />} />
           <Route path="categories" element={<Categories />} />
           <Route path="import" element={<Import />} />
