@@ -252,7 +252,7 @@ function AnnualPlanView({ categories }: { categories: Category[] }) {
   const [editing, setEditing] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
 
-  const { budgetApi } = require('../api')
+  import { budgetApi } from '../api'
 
   const load = async () => {
     setLoading(true)
