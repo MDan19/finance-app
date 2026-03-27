@@ -202,4 +202,39 @@ router.get('/bucket-compliance', async (req, res) => {
   }
 });
 
+router.get('/tag-breakdown', async (req, res) => {
+  try {
+    const { categoryId, startDate, endDate } = req.query as Record<string, string>
+    const where: any = { type: 'EXPENSE' }
+    if (categoryId) where.categoryId = +categoryId
+    if (startDate) where.date = { ...where.date, gte: new Date(startDate) }
+    if (endDate) where.date = { ...where.date, lte: new Date(endDate + 'T23:59:59') }
+
+    const transactions = await prisma.transaction.findMany({
+      where, select: { amountEur: true, amount: true, tags: true },
+    })
+
+    const tagTotals: Record<string, number> = {}
+    for (const tx of transactions) {
+      const tags = (tx as any).tags as string[]
+      const amt = Number(tx.amountEur ?? tx.amount ?? 0)
+      if (!tags || tags.length === 0) {
+        tagTotals['general'] = (tagTotals['general'] || 0) + amt
+      } else {
+        for (const tag of tags) {
+          tagTotals[tag] = (tagTotals[tag] || 0) + amt
+        }
+      }
+    }
+
+    const result = Object.entries(tagTotals)
+      .map(([tag, amount]) => ({ tag, amount }))
+      .sort((a, b) => b.amount - a.amount)
+
+    res.json(result)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' })
+  }
+})
+
 export default router;
