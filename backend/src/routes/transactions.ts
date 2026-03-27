@@ -114,6 +114,7 @@ router.post('/', async (req, res) => {
         toAmount: data.toAmount || null,
         toCurrency: data.toCurrency || null,
         toExchangeRate: data.toExchangeRate || null,
+        tags: data.tags || [],
       },
       include: {
         account: { select: { id: true, name: true, currency: true } },
@@ -167,6 +168,7 @@ router.put('/:id', async (req, res) => {
         toAccountId: data.toAccountId || null,
         toAmount: data.toAmount || null,
         toCurrency: data.toCurrency || null,
+        tags: data.tags || [],
       },
       include: {
         account: { select: { id: true, name: true, currency: true } },
