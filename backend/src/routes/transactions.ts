@@ -257,4 +257,40 @@ async function updateAccountBalance(accountId: number) {
   });
 }
 
+// Add these two routes to backend/src/routes/transactions.ts
+// Place them BEFORE "export default router"
+
+// Count transactions by filter (for Settings preview)
+router.get('/count', async (req, res) => {
+  try {
+    const { accountId, startDate, endDate, importBatchId } = req.query as Record<string, string>
+    const where: any = {}
+    if (accountId) where.accountId = +accountId
+    if (importBatchId) where.importBatchId = +importBatchId
+    if (startDate) where.date = { ...where.date, gte: new Date(startDate) }
+    if (endDate) where.date = { ...where.date, lte: new Date(endDate + 'T23:59:59') }
+    const count = await prisma.transaction.count({ where })
+    res.json({ count })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to count' })
+  }
+})
+
+// Bulk delete by filter (for Settings)
+router.delete('/bulk-delete-filtered', async (req, res) => {
+  try {
+    const { accountId, startDate, endDate, importBatchId } = req.query as Record<string, string>
+    const where: any = {}
+    if (accountId) where.accountId = +accountId
+    if (importBatchId) where.importBatchId = +importBatchId
+    if (startDate) where.date = { ...where.date, gte: new Date(startDate) }
+    if (endDate) where.date = { ...where.date, lte: new Date(endDate + 'T23:59:59') }
+    const result = await prisma.transaction.deleteMany({ where })
+    res.json({ deleted: result.count })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete' })
+  }
+})
+
+
 export default router;
