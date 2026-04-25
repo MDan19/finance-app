@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Upload, Plus, Trash2, Check, FileText, AlertCircle, Info } from 'lucide-react'
+import { Upload, Plus, Trash2, Check, AlertCircle, Info } from 'lucide-react'
 import { importApi, categoriesApi, accountsApi } from '../api'
 import { Category, Account } from '../types'
 
@@ -15,6 +15,7 @@ export default function Import() {
   const [columnMap, setColumnMap] = useState<Record<string, string>>({
     date: '', amount: '', amountCredit: '', amountDebit: '',
     description: '', currency: '', opposingAccount: '',
+    category: '', tags: '',
   })
   const [amountMode, setAmountMode] = useState<'single' | 'two'>('single')
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -35,6 +36,25 @@ export default function Import() {
     try {
       const res = await importApi.preview(f, delimiter)
       setPreview(res.data)
+      // Auto-detect columns by name
+      const headers: string[] = res.data.headers
+      const find = (...names: string[]) => headers.find(h => names.some(n => h.toLowerCase().includes(n.toLowerCase()))) || ''
+      setColumnMap(m => ({
+        ...m,
+        date: find('date', 'datum'),
+        description: find('description', 'omschrijving', 'memo', 'desc'),
+        amount: find('amount', 'bedrag'),
+        amountDebit: find('amount_debit', 'debit', 'af'),
+        amountCredit: find('amount_credit', 'credit', 'bij'),
+        opposingAccount: find('opposing_account', 'tegenrekening', 'counterparty'),
+        currency: find('currency', 'valuta'),
+        category: find('category', 'categorie'),
+        tags: find('tags', 'tag', 'labels'),
+      }))
+      // Auto-detect two-column mode
+      if (find('amount_debit', 'debit') && find('amount_credit', 'credit')) {
+        setAmountMode('two')
+      }
       setStep('map')
     } catch { setError('Failed to parse file') }
     finally { setLoading(false) }
@@ -42,7 +62,7 @@ export default function Import() {
 
   const handleImport = async () => {
     if (!file || !accountId) return
-    setLoading(true)
+    setLoading(true); setError('')
     try {
       const res = await importApi.execute(file, {
         accountId,
@@ -55,6 +75,8 @@ export default function Import() {
       setError(e.response?.data?.error || 'Import failed')
     } finally { setLoading(false) }
   }
+
+  const setMap = (key: string, val: string) => setColumnMap(m => ({ ...m, [key]: val }))
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
@@ -75,9 +97,10 @@ export default function Import() {
       </div>
 
       {tab === 'guide' && <FormatGuide />}
+
       {tab === 'import' && (
         <div className="space-y-6">
-          {/* Step indicators */}
+          {/* Steps */}
           <div className="flex items-center gap-2">
             {(['upload', 'map', 'result'] as Step[]).map((s, i) => (
               <div key={s} className="flex items-center gap-2">
@@ -95,29 +118,27 @@ export default function Import() {
             ))}
           </div>
 
+          {/* STEP 1: Upload */}
           {step === 'upload' && (
             <div className="card space-y-4">
               <div className="flex items-start gap-3 p-3 bg-indigo-900/20 border border-indigo-800/40 rounded-lg">
                 <Info className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5"/>
                 <p className="text-sm text-indigo-300">
-                  Supports standard CSV and Firefly III export format.
-                  See the <button onClick={() => setTab('guide')} className="underline hover:text-white">Format Guide</button> for details.
+                  Supports CSV with single or two-column amounts, European number format, and auto-detection of columns.
+                  See the <button onClick={() => setTab('guide')} className="underline hover:text-white">Format Guide</button>.
                 </p>
               </div>
-
               <div
                 className="border-2 border-dashed border-gray-700 rounded-xl p-12 text-center cursor-pointer hover:border-indigo-500 transition-colors"
                 onClick={() => fileRef.current?.click()}
                 onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFileChange(f) }}
-                onDragOver={e => e.preventDefault()}
-              >
+                onDragOver={e => e.preventDefault()}>
                 <Upload className="w-12 h-12 text-gray-600 mx-auto mb-3"/>
                 <p className="text-gray-400">Drop CSV file here or <span className="text-indigo-400">click to browse</span></p>
-                <p className="text-sm text-gray-600 mt-1">Max 10MB</p>
+                <p className="text-sm text-gray-600 mt-1">Max 50MB</p>
                 <input ref={fileRef} type="file" accept=".csv,.txt" className="hidden"
                   onChange={e => { if (e.target.files?.[0]) handleFileChange(e.target.files[0]) }}/>
               </div>
-
               <div className="flex items-center gap-3">
                 <label className="label mb-0 whitespace-nowrap">Column delimiter</label>
                 <select className="select w-auto" value={delimiter} onChange={e => setDelimiter(e.target.value)}>
@@ -127,18 +148,20 @@ export default function Import() {
                 </select>
               </div>
               {error && <p className="text-red-400 text-sm flex items-center gap-2"><AlertCircle className="w-4 h-4"/>{error}</p>}
-              {loading && <p className="text-indigo-400 text-sm">Parsing file...</p>}
+              {loading && <p className="text-indigo-400 text-sm animate-pulse">Parsing file...</p>}
             </div>
           )}
 
+          {/* STEP 2: Map */}
           {step === 'map' && preview && (
             <div className="space-y-4">
-              <div className="card space-y-4">
-                <h2 className="font-semibold text-white">Map Columns</h2>
-                <p className="text-sm text-gray-400">
-                  File: <span className="text-white">{file?.name}</span> · {preview.totalRows} rows
-                </p>
+              <div className="card space-y-5">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold text-white">Map Columns</h2>
+                  <span className="text-sm text-gray-500">{preview.totalRows} rows · {preview.headers.length} columns detected</span>
+                </div>
 
+                {/* Account */}
                 <div>
                   <label className="label">Account (this file belongs to)</label>
                   <select className="select" value={accountId} onChange={e => setAccountId(e.target.value)}>
@@ -146,104 +169,150 @@ export default function Import() {
                   </select>
                 </div>
 
-                {/* Date */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="label">Date column</label>
-                    <select className="select" value={columnMap.date} onChange={e => setColumnMap(m => ({ ...m, date: e.target.value }))}>
-                      <option value="">— select —</option>
-                      {preview.headers.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label">Description column</label>
-                    <select className="select" value={columnMap.description} onChange={e => setColumnMap(m => ({ ...m, description: e.target.value }))}>
-                      <option value="">— select —</option>
-                      {preview.headers.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Amount mode */}
-                <div>
-                  <label className="label">Amount format</label>
-                  <div className="flex gap-3">
-                    <button onClick={() => setAmountMode('single')}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${amountMode === 'single' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'}`}>
-                      Single column<br/>
-                      <span className="text-xs font-normal opacity-70">-148.29 / +17.10</span>
-                    </button>
-                    <button onClick={() => setAmountMode('two')}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${amountMode === 'two' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'}`}>
-                      Two columns<br/>
-                      <span className="text-xs font-normal opacity-70">amount_debit / amount_credit</span>
-                    </button>
-                  </div>
-                </div>
-
-                {amountMode === 'single' ? (
+                {/* Required fields */}
+                <div className="border border-gray-700 rounded-lg p-4 space-y-3">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Required</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="label">Amount column</label>
-                      <select className="select" value={columnMap.amount} onChange={e => setColumnMap(m => ({ ...m, amount: e.target.value }))}>
+                      <label className="label">Date column</label>
+                      <select className="select" value={columnMap.date} onChange={e => setMap('date', e.target.value)}>
                         <option value="">— select —</option>
                         {preview.headers.map(h => <option key={h} value={h}>{h}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="label">Currency column (optional)</label>
-                      <select className="select" value={columnMap.currency} onChange={e => setColumnMap(m => ({ ...m, currency: e.target.value }))}>
+                      <label className="label">Description column</label>
+                      <select className="select" value={columnMap.description} onChange={e => setMap('description', e.target.value)}>
+                        <option value="">— select —</option>
+                        {preview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Amount mode */}
+                  <div>
+                    <label className="label">Amount format</label>
+                    <div className="flex gap-3">
+                      <button onClick={() => setAmountMode('single')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors flex-1 ${amountMode === 'single' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'}`}>
+                        Single column
+                        <span className="block text-xs font-normal opacity-70 mt-0.5">one column with -/+ values</span>
+                      </button>
+                      <button onClick={() => setAmountMode('two')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors flex-1 ${amountMode === 'two' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'}`}>
+                        Two columns
+                        <span className="block text-xs font-normal opacity-70 mt-0.5">separate debit / credit</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {amountMode === 'single' ? (
+                    <div>
+                      <label className="label">Amount column</label>
+                      <select className="select" value={columnMap.amount} onChange={e => setMap('amount', e.target.value)}>
+                        <option value="">— select —</option>
+                        {preview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="label">Debit column (expenses)</label>
+                        <select className="select" value={columnMap.amountDebit} onChange={e => setMap('amountDebit', e.target.value)}>
+                          <option value="">— select —</option>
+                          {preview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label">Credit column (income)</label>
+                        <select className="select" value={columnMap.amountCredit} onChange={e => setMap('amountCredit', e.target.value)}>
+                          <option value="">— select —</option>
+                          {preview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Optional fields */}
+                <div className="border border-gray-700 rounded-lg p-4 space-y-3">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Optional</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="label">Opposing account column</label>
+                      <select className="select" value={columnMap.opposingAccount} onChange={e => setMap('opposingAccount', e.target.value)}>
+                        <option value="">— none —</option>
+                        {preview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                      <p className="text-xs text-gray-600 mt-1">Auto-detects Transfers</p>
+                    </div>
+                    <div>
+                      <label className="label">Currency column</label>
+                      <select className="select" value={columnMap.currency} onChange={e => setMap('currency', e.target.value)}>
                         <option value="">— none —</option>
                         {preview.headers.map(h => <option key={h} value={h}>{h}</option>)}
                       </select>
                     </div>
+                    <div>
+                      <label className="label">Category column</label>
+                      <select className="select" value={columnMap.category} onChange={e => setMap('category', e.target.value)}>
+                        <option value="">— none —</option>
+                        {preview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                      <p className="text-xs text-gray-600 mt-1">Must match category names in app</p>
+                    </div>
+                    <div>
+                      <label className="label">Tags column</label>
+                      <select className="select" value={columnMap.tags} onChange={e => setMap('tags', e.target.value)}>
+                        <option value="">— none —</option>
+                        {preview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                      <p className="text-xs text-gray-600 mt-1">Comma-separated tags per row</p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="label">Debit column (expenses ↑)</label>
-                      <select className="select" value={columnMap.amountDebit} onChange={e => setColumnMap(m => ({ ...m, amountDebit: e.target.value }))}>
-                        <option value="">— select —</option>
-                        {preview.headers.map(h => <option key={h} value={h}>{h}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="label">Credit column (income ↓)</label>
-                      <select className="select" value={columnMap.amountCredit} onChange={e => setColumnMap(m => ({ ...m, amountCredit: e.target.value }))}>
-                        <option value="">— select —</option>
-                        {preview.headers.map(h => <option key={h} value={h}>{h}</option>)}
-                      </select>
-                    </div>
+                </div>
+
+                {/* Auto-detected notice */}
+                {Object.values(columnMap).some(v => v) && (
+                  <div className="flex items-start gap-2 p-3 bg-green-900/20 border border-green-800/30 rounded-lg">
+                    <Check className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5"/>
+                    <p className="text-xs text-green-300">
+                      Columns auto-detected from header names. Review and adjust if needed.
+                    </p>
                   </div>
                 )}
-
-                {/* Opposing account */}
-                <div>
-                  <label className="label">Opposing account column (optional — for auto Transfer detection)</label>
-                  <select className="select" value={columnMap.opposingAccount} onChange={e => setColumnMap(m => ({ ...m, opposingAccount: e.target.value }))}>
-                    <option value="">— none —</option>
-                    {preview.headers.map(h => <option key={h} value={h}>{h}</option>)}
-                  </select>
-                  <p className="text-xs text-gray-600 mt-1">
-                    If this matches the name of one of your accounts, the transaction will be created as a Transfer
-                  </p>
-                </div>
               </div>
 
               {/* Preview table */}
               <div className="card p-0 overflow-hidden">
-                <div className="p-3 border-b border-gray-800">
+                <div className="p-3 border-b border-gray-800 flex items-center justify-between">
                   <p className="text-sm font-medium text-gray-400">Preview (first 20 rows)</p>
+                  <p className="text-xs text-gray-600">{preview.headers.length} columns</p>
                 </div>
                 <div className="overflow-x-auto max-h-64">
                   <table className="w-full text-xs">
-                    <thead className="bg-gray-900">
-                      <tr>{preview.headers.map(h => <th key={h} className="p-2 text-left text-gray-500 border-b border-gray-800 whitespace-nowrap">{h}</th>)}</tr>
+                    <thead className="bg-gray-900 sticky top-0">
+                      <tr>
+                        {preview.headers.map(h => (
+                          <th key={h} className={`p-2 text-left border-b border-gray-800 whitespace-nowrap ${
+                            Object.values(columnMap).includes(h) ? 'text-indigo-400' : 'text-gray-500'
+                          }`}>
+                            {h}
+                            {Object.entries(columnMap).find(([,v]) => v === h)?.[0] && (
+                              <span className="ml-1 text-indigo-600">✓</span>
+                            )}
+                          </th>
+                        ))}
+                      </tr>
                     </thead>
                     <tbody>
                       {preview.rows.map((row, i) => (
-                        <tr key={i} className="border-b border-gray-800/50">
-                          {preview.headers.map(h => <td key={h} className="p-2 text-gray-300 whitespace-nowrap">{row[h]}</td>)}
+                        <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-900/30">
+                          {preview.headers.map(h => (
+                            <td key={h} className={`p-2 whitespace-nowrap ${
+                              Object.values(columnMap).includes(h) ? 'text-gray-200' : 'text-gray-600'
+                            }`}>{row[h] || '—'}</td>
+                          ))}
                         </tr>
                       ))}
                     </tbody>
@@ -251,20 +320,31 @@ export default function Import() {
                 </div>
               </div>
 
-              {error && <p className="text-red-400 text-sm flex items-center gap-2"><AlertCircle className="w-4 h-4"/>{error}</p>}
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-900/20 border border-red-800/40 rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0"/>
+                  <p className="text-sm text-red-300">{error}</p>
+                </div>
+              )}
+
               <div className="flex gap-3">
-                <button onClick={() => setStep('upload')} className="btn-secondary">Back</button>
+                <button onClick={() => { setStep('upload'); setPreview(null); setFile(null) }} className="btn-secondary">Back</button>
                 <button
                   onClick={handleImport}
-                  disabled={loading || !columnMap.date || (!columnMap.amount && amountMode === 'single') || (!columnMap.amountDebit && amountMode === 'two')}
-                  className="btn-primary flex-1"
-                >
-                  {loading ? 'Importing...' : `Import ${preview.totalRows} rows`}
+                  disabled={loading || !columnMap.date || (amountMode === 'single' ? !columnMap.amount : !columnMap.amountDebit)}
+                  className="btn-primary flex-1 flex items-center justify-center gap-2">
+                  {loading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                      Importing {preview.totalRows} rows...
+                    </>
+                  ) : `Import ${preview.totalRows} rows`}
                 </button>
               </div>
             </div>
           )}
 
+          {/* STEP 3: Result */}
           {step === 'result' && result && (
             <div className="card space-y-4">
               <div className="flex items-center gap-3">
@@ -273,10 +353,11 @@ export default function Import() {
                 </div>
                 <div>
                   <h2 className="font-semibold text-white">Import Complete</h2>
-                  <p className="text-sm text-gray-400">Your transactions have been imported</p>
+                  <p className="text-sm text-gray-400">File: {file?.name}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-4">
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: 'Imported', value: result.imported, color: 'text-green-400', bg: 'bg-green-900/20 border-green-800/40' },
                   { label: 'Transfers', value: result.transfers || 0, color: 'text-blue-400', bg: 'bg-blue-900/20 border-blue-800/40' },
@@ -284,16 +365,28 @@ export default function Import() {
                   { label: 'Need category', value: result.needsCategory, color: 'text-orange-400', bg: 'bg-orange-900/20 border-orange-800/40' },
                 ].map(s => (
                   <div key={s.label} className={`border rounded-lg p-3 text-center ${s.bg}`}>
-                    <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-                    <p className="text-xs text-gray-500">{s.label}</p>
+                    <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
+                    <p className="text-xs text-gray-500 mt-1">{s.label}</p>
                   </div>
                 ))}
               </div>
+
+              {/* Import log */}
+              {result.log && result.log.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Skip log ({result.log.length} entries)</p>
+                  <div className="bg-gray-900 rounded-lg p-3 max-h-40 overflow-y-auto">
+                    {result.log.map((entry: string, i: number) => (
+                      <p key={i} className="text-xs text-gray-500 font-mono">{entry}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-3">
-                <button onClick={() => { setStep('upload'); setFile(null); setPreview(null); setResult(null) }} className="btn-secondary flex-1">
-                  Import Another
-                </button>
-                <a href="/transactions" className="btn-primary flex-1 text-center">View Transactions</a>
+                <button onClick={() => { setStep('upload'); setFile(null); setPreview(null); setResult(null) }}
+                  className="btn-secondary flex-1">Import Another File</button>
+                <a href="/transactions" className="btn-primary flex-1 text-center">View Transactions →</a>
               </div>
             </div>
           )}
@@ -306,125 +399,45 @@ export default function Import() {
   )
 }
 
-// ── Format Guide ─────────────────────────────────────────────────────────────
-
+// ── Format Guide ──────────────────────────────────────────────────────────────
 function FormatGuide() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="card space-y-4">
-        <h2 className="font-semibold text-white flex items-center gap-2">
-          <FileText className="w-5 h-5 text-indigo-400"/> CSV Format Requirements
-        </h2>
-
+        <h2 className="font-semibold text-white">📋 CSV Format Guide</h2>
         <div className="space-y-4">
-          {/* General */}
           <Section title="General">
             <Row label="File type" value=".csv or .txt"/>
-            <Row label="Encoding" value="UTF-8 (recommended) or Windows-1252"/>
-            <Row label="Max size" value="10 MB"/>
+            <Row label="Encoding" value="UTF-8 recommended"/>
             <Row label="First row" value="Must be column headers"/>
-            <Row label="Delimiter" value="Comma (,) or Semicolon (;) or Tab — select at upload"/>
+            <Row label="Delimiter" value="Comma (,) or Semicolon (;) — select at upload"/>
           </Section>
-
-          {/* Dates */}
           <Section title="📅 Date formats — all supported">
             <div className="grid grid-cols-2 gap-2 mt-2">
-              {[
-                ['15.01.2026', '✅ DD.MM.YYYY (most common in NL/EU)'],
-                ['2026-01-15', '✅ YYYY-MM-DD (ISO standard)'],
-                ['15/01/2026', '✅ DD/MM/YYYY'],
-                ['01/15/2026', '✅ MM/DD/YYYY (US format)'],
-                ['15-01-2026', '✅ DD-MM-YYYY'],
-                ['15 Jan 2026', '✅ DD Mon YYYY'],
-              ].map(([fmt, desc]) => (
-                <div key={fmt} className="flex items-center gap-2 bg-gray-800/50 rounded px-3 py-2">
-                  <code className="text-indigo-300 text-xs font-mono w-28">{fmt}</code>
-                  <span className="text-xs text-gray-400">{desc}</span>
-                </div>
+              {['2026-01-15 (YYYY-MM-DD)','15.01.2026 (DD.MM.YYYY)','15/01/2026 (DD/MM/YYYY)','15-01-2026 (DD-MM-YYYY)'].map(f => (
+                <div key={f} className="bg-gray-800/50 rounded px-3 py-2 text-xs text-indigo-300 font-mono">{f}</div>
               ))}
             </div>
           </Section>
-
-          {/* Amounts */}
           <Section title="💶 Amount formats — all supported">
             <div className="grid grid-cols-2 gap-2 mt-2">
-              {[
-                ['148,29', 'European decimal comma'],
-                ['1 052,55', 'Thousands space + decimal comma'],
-                ['1.052,55', 'Thousands dot + decimal comma'],
-                ['148.29', 'Standard decimal dot'],
-                ['1,052.55', 'Thousands comma + decimal dot'],
-                ['-148,29', 'Negative = expense (single column)'],
-                ['+17,10', 'Positive = income (single column)'],
-              ].map(([fmt, desc]) => (
-                <div key={fmt} className="flex items-center gap-2 bg-gray-800/50 rounded px-3 py-2">
-                  <code className="text-indigo-300 text-xs font-mono w-24">{fmt}</code>
-                  <span className="text-xs text-gray-400">{desc}</span>
-                </div>
+              {['148,29 (European)','1 052,55 (space thousands)','1.052,55 (dot thousands)','148.29 (standard)','-148,29 (negative = expense)','+17,10 (positive = income)'].map(f => (
+                <div key={f} className="bg-gray-800/50 rounded px-3 py-2 text-xs text-indigo-300 font-mono">{f}</div>
               ))}
             </div>
           </Section>
-
-          {/* Two column amounts */}
-          <Section title="📊 Two-column amount format (Firefly III / ABN AMRO style)">
-            <p className="text-sm text-gray-400 mb-3">
-              If your bank exports separate debit and credit columns, select <strong className="text-white">"Two columns"</strong> in the mapping step.
+          <Section title="🏷️ Tags column format">
+            <p className="text-sm text-gray-400 mt-1">
+              Tags in the CSV should be comma-separated within the cell:
             </p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr className="bg-gray-800">
-                    <th className="p-2 text-left text-gray-400 border border-gray-700">date</th>
-                    <th className="p-2 text-left text-gray-400 border border-gray-700">assets_account</th>
-                    <th className="p-2 text-left text-gray-400 border border-gray-700">opposing_account</th>
-                    <th className="p-2 text-left text-gray-400 border border-gray-700">amount_credit</th>
-                    <th className="p-2 text-left text-gray-400 border border-gray-700">amount_debit</th>
-                    <th className="p-2 text-left text-gray-400 border border-gray-700">description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    ['15.01.2026', 'ABN AMRO (EUR)', '', '', '148,29', 'Albert Heijn'],
-                    ['04.02.2026', 'ABN AMRO (EUR)', '', '17,10', '', 'Refund'],
-                    ['01.02.2026', 'ABN AMRO (EUR)', 'ABN AMRO - Loan', '', '740,66', 'Loan payment'],
-                  ].map((row, i) => (
-                    <tr key={i} className="border border-gray-700">
-                      {row.map((cell, j) => <td key={j} className={`p-2 border border-gray-700 font-mono ${cell ? 'text-gray-300' : 'text-gray-700'}`}>{cell || '—'}</td>)}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-3 space-y-1 text-xs text-gray-400">
-              <p>• <strong className="text-white">amount_debit</strong> = money going out (expense) → imported as Expense</p>
-              <p>• <strong className="text-white">amount_credit</strong> = money coming in → imported as Income</p>
-              <p>• <strong className="text-white">opposing_account</strong> = if it matches one of your account names → imported as Transfer</p>
+            <div className="bg-gray-800/50 rounded px-3 py-2 text-xs text-indigo-300 font-mono mt-2">
+              groceries, trip_france, business
             </div>
           </Section>
-
-          {/* Opposing account / Transfer */}
-          <Section title="🔄 Automatic Transfer detection">
-            <p className="text-sm text-gray-400">
-              If you map the <code className="text-indigo-300 bg-gray-800 px-1 rounded">opposing_account</code> column,
-              the importer will check if that value matches any of your account names.
-              If it matches — the transaction is automatically created as a <strong className="text-white">Transfer</strong> between the two accounts.
+          <Section title="🔄 Transfer detection via opposing_account">
+            <p className="text-sm text-gray-400 mt-1">
+              If the opposing_account column value exactly matches one of your account names, the transaction is automatically created as a Transfer.
             </p>
-            <div className="mt-3 p-3 bg-gray-800/50 rounded-lg text-xs space-y-1">
-              <p className="text-gray-400">Example: opposing_account = <code className="text-yellow-300">"ABN AMRO - Personal Loan"</code></p>
-              <p className="text-gray-400">You have an account named <code className="text-yellow-300">"ABN AMRO - Personal Loan"</code></p>
-              <p className="text-green-400">→ Imported as Transfer from current account to that loan account ✅</p>
-            </div>
-          </Section>
-
-          {/* Tips */}
-          <Section title="💡 Tips">
-            <ul className="space-y-2 text-sm text-gray-400">
-              <li>• Duplicate transactions (same date + amount + description) are automatically skipped</li>
-              <li>• Set up <strong className="text-white">Keyword Rules</strong> to auto-categorize — e.g. "Albert Heijn" → Groceries</li>
-              <li>• You can import the same file multiple times safely — duplicates are detected</li>
-              <li>• After import, use bulk re-categorize to fix uncategorized transactions</li>
-              <li>• The <strong className="text-white">assets_account</strong> column is ignored — you select the account manually</li>
-            </ul>
           </Section>
         </div>
       </div>
@@ -435,15 +448,14 @@ function FormatGuide() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="border border-gray-800 rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-white mb-3">{title}</h3>
+      <h3 className="text-sm font-semibold text-white mb-2">{title}</h3>
       {children}
     </div>
   )
 }
-
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between py-1.5 border-b border-gray-800/50 last:border-0">
+    <div className="flex justify-between py-1.5 border-b border-gray-800/50 last:border-0">
       <span className="text-sm text-gray-400">{label}</span>
       <span className="text-sm text-gray-200">{value}</span>
     </div>
@@ -451,37 +463,32 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 // ── Keyword Rules ─────────────────────────────────────────────────────────────
-
 function KeywordRulesView({ categories }: { categories: Category[] }) {
   const [rules, setRules] = useState<any[]>([])
   const [keyword, setKeyword] = useState('')
   const [categoryId, setCategoryId] = useState('')
-
   const load = () => importApi.keywordRules().then(r => setRules(r.data))
   useEffect(() => { load() }, [])
-
   const addRule = async () => {
     if (!keyword || !categoryId) return
     await importApi.createKeywordRule({ keyword, categoryId: +categoryId, priority: 0 })
     setKeyword(''); setCategoryId(''); load()
   }
-
   return (
     <div className="space-y-4">
       <div className="card space-y-3">
-        <h2 className="font-semibold text-white">Add Keyword Rule</h2>
-        <p className="text-sm text-gray-400">
-          Transactions whose description contains the keyword will be auto-categorized during import.
-        </p>
+        <h2 className="font-semibold text-white">Keyword Rules</h2>
+        <p className="text-sm text-gray-400">Transactions matching the keyword are auto-categorized during import.</p>
         <div className="flex gap-3 flex-wrap">
-          <input className="input flex-1 min-w-48" placeholder="Keyword (e.g. Albert Heijn, NS , Netflix)" value={keyword} onChange={e => setKeyword(e.target.value)}
+          <input className="input flex-1 min-w-48" placeholder="e.g. Albert Heijn, NS , Netflix"
+            value={keyword} onChange={e => setKeyword(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') addRule() }}/>
           <select className="select flex-1 min-w-48" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
             <option value="">Select category</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
           </select>
           <button onClick={addRule} disabled={!keyword || !categoryId} className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4"/> Add Rule
+            <Plus className="w-4 h-4"/> Add
           </button>
         </div>
       </div>
@@ -494,15 +501,14 @@ function KeywordRulesView({ categories }: { categories: Category[] }) {
           </tr></thead>
           <tbody>
             {rules.length === 0 ? (
-              <tr><td colSpan={3} className="p-6 text-center text-gray-600">No keyword rules yet. Add some to speed up categorization.</td></tr>
+              <tr><td colSpan={3} className="p-6 text-center text-gray-600">No keyword rules yet</td></tr>
             ) : rules.map(rule => (
               <tr key={rule.id} className="border-b border-gray-800/50 hover:bg-gray-900/30">
                 <td className="p-3 font-mono text-indigo-300">{rule.keyword}</td>
                 <td className="p-3 text-gray-300">{rule.category?.icon} {rule.category?.name}</td>
                 <td className="p-3">
-                  <button onClick={async () => { await importApi.deleteKeywordRule(rule.id); load() }} className="text-gray-600 hover:text-red-400">
-                    <Trash2 className="w-4 h-4"/>
-                  </button>
+                  <button onClick={async () => { await importApi.deleteKeywordRule(rule.id); load() }}
+                    className="text-gray-600 hover:text-red-400"><Trash2 className="w-4 h-4"/></button>
                 </td>
               </tr>
             ))}
@@ -514,7 +520,6 @@ function KeywordRulesView({ categories }: { categories: Category[] }) {
 }
 
 // ── Import History ────────────────────────────────────────────────────────────
-
 function ImportHistoryView() {
   const [batches, setBatches] = useState<any[]>([])
   useEffect(() => { importApi.batches().then(r => setBatches(r.data)) }, [])
@@ -524,9 +529,9 @@ function ImportHistoryView() {
         <thead><tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
           <th className="p-3 text-left">Date</th>
           <th className="p-3 text-left">File</th>
-          <th className="p-3 text-left">Account</th>
           <th className="p-3 text-right">Imported</th>
           <th className="p-3 text-right">Skipped</th>
+          <th className="p-3 text-left">Status</th>
         </tr></thead>
         <tbody>
           {batches.length === 0 ? (
@@ -535,9 +540,13 @@ function ImportHistoryView() {
             <tr key={b.id} className="border-b border-gray-800/50">
               <td className="p-3 text-gray-400">{new Date(b.createdAt).toLocaleDateString()}</td>
               <td className="p-3 text-white">{b.filename}</td>
-              <td className="p-3 text-gray-300">{b.account?.name || '—'}</td>
               <td className="p-3 text-right text-green-400">{b.importedRows}</td>
               <td className="p-3 text-right text-yellow-400">{b.skippedRows}</td>
+              <td className="p-3">
+                <span className={`text-xs px-2 py-0.5 rounded-full ${b.status === 'done' ? 'bg-green-900/40 text-green-400' : 'bg-yellow-900/40 text-yellow-400'}`}>
+                  {b.status}
+                </span>
+              </td>
             </tr>
           ))}
         </tbody>
