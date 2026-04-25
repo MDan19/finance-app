@@ -1,4 +1,4 @@
-type Theme = 'dark' | 'light' | 'system'
+export type Theme = 'dark' | 'light' | 'system'
 
 function getSystemTheme(): 'dark' | 'light' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
@@ -14,7 +14,7 @@ function applyTheme(theme: Theme) {
   }
 }
 
-export function initTheme() {
+export function initTheme(): void {
   const saved = (localStorage.getItem('theme') as Theme) || 'dark'
   applyTheme(saved)
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
@@ -23,7 +23,7 @@ export function initTheme() {
   })
 }
 
-export function setTheme(theme: Theme) {
+export function setTheme(theme: Theme): void {
   localStorage.setItem('theme', theme)
   applyTheme(theme)
 }
