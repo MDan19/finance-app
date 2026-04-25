@@ -20,7 +20,6 @@ function getTheme(): Theme {
   return (localStorage.getItem('theme') as Theme) || 'dark'
 }
 
-type Theme = 'dark' | 'light' | 'system'
 type Tab = 'general' | 'transactions' | 'data'
 
 export default function Settings() {
