@@ -4,7 +4,21 @@ import { settingsApi, authApi, accountsApi } from '../api'
 import { Account } from '../types'
 import { CURRENCIES } from '../utils/format'
 import { useAuthStore } from '../store/auth'
-import { setTheme, getTheme } from '../utils/theme'
+type Theme = 'dark' | 'light' | 'system'
+
+function setTheme(theme: Theme) {
+  localStorage.setItem('theme', theme)
+  const root = document.documentElement
+  const effective = theme === 'system'
+    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : theme
+  if (effective === 'light') root.classList.add('light')
+  else root.classList.remove('light')
+}
+
+function getTheme(): Theme {
+  return (localStorage.getItem('theme') as Theme) || 'dark'
+}
 
 type Theme = 'dark' | 'light' | 'system'
 type Tab = 'general' | 'transactions' | 'data'
