@@ -1,4 +1,3 @@
-// Theme store - persists in localStorage
 type Theme = 'dark' | 'light' | 'system'
 
 function getSystemTheme(): 'dark' | 'light' {
@@ -18,8 +17,6 @@ function applyTheme(theme: Theme) {
 export function initTheme() {
   const saved = (localStorage.getItem('theme') as Theme) || 'dark'
   applyTheme(saved)
-
-  // Listen for system changes
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     const current = (localStorage.getItem('theme') as Theme) || 'dark'
     if (current === 'system') applyTheme('system')
