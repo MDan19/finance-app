@@ -4,27 +4,31 @@
 
 /* ── Theme variables ─────────────────────────────────────────────────────── */
 :root {
-  --bg-primary: #030712;
-  --bg-secondary: #111827;
-  --bg-card: #111827;
-  --bg-hover: #1f2937;
-  --border: #1f2937;
-  --border-light: #374151;
-  --text-primary: #f9fafb;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
+  --bg-primary:    #030712;
+  --bg-secondary:  #111827;
+  --bg-card:       #111827;
+  --bg-hover:      #1f2937;
+  --bg-input:      #1f2937;
+  --border:        #1f2937;
+  --border-light:  #374151;
+  --text-primary:  #f9fafb;
+  --text-secondary:#9ca3af;
+  --text-muted:    #6b7280;
+  --shadow:        rgba(0,0,0,0.4);
 }
 
 .light {
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
-  --bg-card: #ffffff;
-  --bg-hover: #f1f5f9;
-  --border: #e2e8f0;
-  --border-light: #cbd5e1;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --bg-primary:    #f1f5f9;
+  --bg-secondary:  #ffffff;
+  --bg-card:       #ffffff;
+  --bg-hover:      #f8fafc;
+  --bg-input:      #f8fafc;
+  --border:        #e2e8f0;
+  --border-light:  #cbd5e1;
+  --text-primary:  #0f172a;
+  --text-secondary:#475569;
+  --text-muted:    #64748b;
+  --shadow:        rgba(0,0,0,0.08);
 }
 
 /* ── Base ────────────────────────────────────────────────────────────────── */
@@ -33,9 +37,8 @@
     background-color: var(--bg-primary);
     color: var(--text-primary);
     @apply antialiased;
-    transition: background-color 0.2s, color 0.2s;
+    transition: background-color 0.15s, color 0.15s;
   }
-
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg-secondary); }
   ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 9999px; }
@@ -43,53 +46,74 @@
 
 /* ── Components ──────────────────────────────────────────────────────────── */
 @layer components {
+
+  /* Cards */
   .card {
     background-color: var(--bg-card);
     border: 1px solid var(--border);
+    box-shadow: 0 1px 3px var(--shadow);
     @apply rounded-xl p-4;
   }
   .card-hover {
     background-color: var(--bg-card);
     border: 1px solid var(--border);
-    @apply rounded-xl p-4 transition-colors;
+    box-shadow: 0 1px 3px var(--shadow);
+    @apply rounded-xl p-4 transition-all;
   }
   .card-hover:hover {
-    border-color: var(--border-light);
+    border-color: #6366f1;
+    box-shadow: 0 4px 12px var(--shadow);
   }
+
+  /* Buttons */
   .btn-primary {
     @apply bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-secondary {
     background-color: var(--bg-hover);
     color: var(--text-primary);
-    border: 1px solid var(--border);
-    @apply px-4 py-2 rounded-lg font-medium transition-colors hover:border-indigo-500;
+    border: 1px solid var(--border-light);
+    @apply px-4 py-2 rounded-lg font-medium transition-colors;
+  }
+  .btn-secondary:hover {
+    border-color: #6366f1;
+    color: var(--text-primary);
   }
   .btn-danger {
     @apply bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-medium transition-colors;
   }
+
+  /* Inputs */
   .input {
-    background-color: var(--bg-hover);
+    background-color: var(--bg-input);
     border: 1px solid var(--border-light);
     color: var(--text-primary);
-    @apply rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full;
+    @apply rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full transition-colors;
   }
   .input::placeholder { color: var(--text-muted); }
   .select {
-    background-color: var(--bg-hover);
+    background-color: var(--bg-input);
     border: 1px solid var(--border-light);
     color: var(--text-primary);
-    @apply rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full;
+    @apply rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full transition-colors;
   }
   .label {
     color: var(--text-secondary);
     @apply text-sm font-medium mb-1 block;
   }
-  .badge-expense   { @apply bg-red-900/40 text-red-400 text-xs px-2 py-0.5 rounded-full; }
-  .badge-income    { @apply bg-green-900/40 text-green-400 text-xs px-2 py-0.5 rounded-full; }
-  .badge-transfer  { @apply bg-blue-900/40 text-blue-400 text-xs px-2 py-0.5 rounded-full; }
-  .badge-refund    { @apply bg-yellow-900/40 text-yellow-400 text-xs px-2 py-0.5 rounded-full; }
-  .badge-compensation { @apply bg-purple-900/40 text-purple-400 text-xs px-2 py-0.5 rounded-full; }
+
+  /* Transaction badges */
+  .badge-expense      { @apply bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full font-medium; }
+  .badge-income       { @apply bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium; }
+  .badge-transfer     { @apply bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium; }
+  .badge-refund       { @apply bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full font-medium; }
+  .badge-compensation { @apply bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full font-medium; }
+
+  .dark .badge-expense      { @apply bg-red-900/40 text-red-400; }
+  .dark .badge-income       { @apply bg-green-900/40 text-green-400; }
+  .dark .badge-transfer     { @apply bg-blue-900/40 text-blue-400; }
+  .dark .badge-refund       { @apply bg-yellow-900/40 text-yellow-400; }
+  .dark .badge-compensation { @apply bg-purple-900/40 text-purple-400; }
 
   /* Sidebar */
   .sidebar {
@@ -108,18 +132,8 @@
     @apply bg-indigo-600 text-white;
   }
 
-  /* Tables */
-  .table-header {
-    color: var(--text-muted);
-    border-bottom: 1px solid var(--border);
-    @apply text-xs uppercase tracking-wider;
-  }
-  .table-row {
-    border-bottom: 1px solid var(--border);
-  }
-  .table-row:hover {
-    background-color: var(--bg-hover);
-  }
+  /* Main content */
+  .main-content { background-color: var(--bg-primary); }
 
   /* Tabs */
   .tab-bar {
@@ -131,11 +145,104 @@
     color: var(--text-secondary);
     @apply px-4 py-2 rounded-md text-sm font-medium transition-colors;
   }
-  .tab-btn:hover { color: var(--text-primary); }
-  .tab-btn.active { @apply bg-indigo-600 text-white; }
+  .tab-btn:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  .tab-btn.active {
+    @apply bg-indigo-600 text-white;
+  }
 
-  /* Main content */
-  .main-content {
-    background-color: var(--bg-primary);
+  /* Tables */
+  .table-header {
+    background-color: var(--bg-secondary);
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    @apply text-xs uppercase tracking-wider;
+  }
+  .table-row { border-bottom: 1px solid var(--border); }
+  .table-row:hover { background-color: var(--bg-hover); }
+
+  /* Plan/Fact table specific */
+  .plan-table {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+  }
+  .plan-table th {
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-color: var(--border);
+  }
+  .plan-table td {
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+  .plan-group-header {
+    background-color: var(--bg-hover);
+  }
+  .plan-cell-empty { color: var(--text-muted); }
+  .plan-cell-value { color: var(--text-primary); }
+  .plan-edit-input {
+    background-color: #4338ca20;
+    color: #818cf8;
+    border: 1px solid #6366f1;
+  }
+
+  /* Modal overlay */
+  .modal-overlay { @apply fixed inset-0 z-50 flex items-center justify-center p-4; }
+  .modal-bg { @apply absolute inset-0 bg-black/50 backdrop-blur-sm; }
+  .modal-content {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
+    @apply relative rounded-xl w-full max-h-[90vh] flex flex-col shadow-2xl;
+  }
+  .modal-header {
+    border-bottom: 1px solid var(--border);
+    @apply flex items-center justify-between p-4;
   }
 }
+
+/* ── Tailwind overrides for theme ────────────────────────────────────────── */
+/* These override hardcoded dark classes when light theme is active */
+
+.light .bg-gray-950  { background-color: var(--bg-primary) !important; }
+.light .bg-gray-900  { background-color: var(--bg-secondary) !important; }
+.light .bg-gray-800  { background-color: var(--bg-hover) !important; }
+.light .bg-gray-700  { background-color: var(--border-light) !important; }
+
+.light .border-gray-800 { border-color: var(--border) !important; }
+.light .border-gray-700 { border-color: var(--border-light) !important; }
+
+.light .text-gray-100 { color: var(--text-primary) !important; }
+.light .text-gray-200 { color: var(--text-primary) !important; }
+.light .text-gray-300 { color: var(--text-secondary) !important; }
+.light .text-gray-400 { color: var(--text-secondary) !important; }
+.light .text-gray-500 { color: var(--text-muted) !important; }
+.light .text-gray-600 { color: var(--text-muted) !important; }
+.light .text-gray-700 { color: var(--text-muted) !important; }
+.light .text-white    { color: var(--text-primary) !important; }
+
+.light .hover\:bg-gray-800:hover  { background-color: var(--bg-hover) !important; }
+.light .hover\:bg-gray-700:hover  { background-color: var(--border) !important; }
+.light .hover\:bg-gray-900\/30:hover { background-color: var(--bg-hover) !important; }
+.light .hover\:bg-gray-900\/50:hover { background-color: var(--bg-hover) !important; }
+
+.light .bg-gray-900\/30 { background-color: transparent !important; }
+.light .bg-gray-900\/50 { background-color: var(--bg-hover) !important; }
+.light .bg-gray-900\/20 { background-color: var(--bg-hover) !important; }
+.light .bg-gray-800\/40 { background-color: var(--bg-hover) !important; }
+.light .bg-gray-800\/50 { background-color: var(--bg-hover) !important; }
+.light .bg-gray-800\/60 { background-color: var(--bg-hover) !important; }
+.light .bg-gray-950     { background-color: var(--bg-primary) !important; }
+
+/* Table cells in light mode */
+.light table { background-color: var(--bg-card); color: var(--text-primary); }
+.light thead { background-color: var(--bg-secondary); }
+.light th { color: var(--text-muted) !important; border-color: var(--border) !important; }
+.light td { color: var(--text-primary); border-color: var(--border) !important; }
+
+/* Sticky cells */
+.light .sticky { background-color: var(--bg-card) !important; }
+
+/* Animate pulse in light */
+.light .animate-pulse .bg-gray-800 { background-color: var(--border) !important; }
