@@ -17,42 +17,39 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className="w-56 flex-shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col">
-        <div className="p-4 border-b border-gray-800">
+      <aside className="w-56 flex-shrink-0 sidebar flex flex-col">
+        <div className="p-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-white"/>
             </div>
-            <span className="font-bold text-white">MyFinance</span>
+            <span className="font-bold" style={{ color: 'var(--text-primary)' }}>MyFinance</span>
           </div>
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
           {nav.map(({ to, icon: Icon, label, end }) => (
             <NavLink key={to} to={to} end={end}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                }`
-              }>
+              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
               <Icon className="w-4 h-4"/>
               {label}
             </NavLink>
           ))}
         </nav>
 
-        <div className="p-3 border-t border-gray-800">
+        <div className="p-3" style={{ borderTop: '1px solid var(--border)' }}>
           <div className="flex items-center justify-between px-3 py-2">
-            <span className="text-sm text-gray-400 truncate">{user?.username}</span>
+            <span className="text-sm truncate" style={{ color: 'var(--text-muted)' }}>{user?.username}</span>
             <button onClick={() => { logout(); navigate('/login') }}
-              className="text-gray-500 hover:text-red-400 transition-colors" title="Logout">
+              className="transition-colors hover:text-red-400"
+              style={{ color: 'var(--text-muted)' }} title="Logout">
               <LogOut className="w-4 h-4"/>
             </button>
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto bg-gray-950">
+      <main className="flex-1 overflow-auto main-content">
         <Outlet/>
       </main>
     </div>
