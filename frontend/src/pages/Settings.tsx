@@ -1,37 +1,31 @@
 import { useEffect, useState } from 'react'
-import { Download, Save } from 'lucide-react'
-import { settingsApi, authApi, scheduledApi, categoriesApi, accountsApi } from '../api'
-import { ScheduledPayment, Category, Account } from '../types'
-import { CURRENCIES, formatCurrency } from '../utils/format'
-import Modal from '../components/Modal'
+import { Download, Save, Sun, Moon, Monitor } from 'lucide-react'
+import { settingsApi, authApi, accountsApi } from '../api'
+import { Account } from '../types'
+import { CURRENCIES } from '../utils/format'
 import { useAuthStore } from '../store/auth'
-import { Plus, Edit2, Trash2 } from 'lucide-react'
+import { setTheme, getTheme } from '../utils/theme'
 
-type Tab = 'general' | 'scheduled' | 'data'
+type Theme = 'dark' | 'light' | 'system'
+type Tab = 'general' | 'transactions' | 'data'
 
 export default function Settings() {
   const [tab, setTab] = useState<Tab>('general')
-
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-white">Settings</h1>
-
-      <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1 w-fit">
+      <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Settings</h1>
+      <div className="tab-bar w-fit">
         {([
           { key: 'general', label: 'General' },
-          { key: 'scheduled', label: 'Scheduled Payments' },
+          { key: 'transactions', label: 'Transactions' },
           { key: 'data', label: 'Data' },
         ] as { key: Tab; label: string }[]).map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${tab === t.key ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
-            {t.label}
-          </button>
+          <button key={t.key} onClick={() => setTab(t.key)} className={`tab-btn${tab===t.key?' active':''}`}>{t.label}</button>
         ))}
       </div>
-
-      {tab === 'general' && <GeneralSettings />}
-      {tab === 'scheduled' && <ScheduledSettings />}
-      {tab === 'data' && <DataSettings />}
+      {tab === 'general' && <GeneralSettings/>}
+      {tab === 'transactions' && <TransactionsSettings/>}
+      {tab === 'data' && <DataSettings/>}
     </div>
   )
 }
@@ -43,6 +37,12 @@ function GeneralSettings() {
   const [newPassword, setNewPassword] = useState('')
   const [pwMsg, setPwMsg] = useState('')
   const [settingsMsg, setSettingsMsg] = useState('')
+  const [theme, setThemeState] = useState<Theme>(getTheme())
+
+  const handleTheme = (t: Theme) => {
+    setThemeState(t)
+    setTheme(t)
+  }
 
   const saveCurrency = async () => {
     await settingsApi.update({ baseCurrency })
@@ -61,11 +61,37 @@ function GeneralSettings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Theme */}
       <div className="card space-y-4">
-        <h2 className="font-semibold text-white">Display Settings</h2>
+        <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Appearance</h2>
         <div>
-          <label className="label">Base Currency</label>
+          <label className="label">Theme</label>
+          <div className="flex gap-3">
+            {([
+              { key: 'light', label: 'Light', icon: Sun },
+              { key: 'dark', label: 'Dark', icon: Moon },
+              { key: 'system', label: 'System', icon: Monitor },
+            ] as { key: Theme; label: string; icon: any }[]).map(({ key, label, icon: Icon }) => (
+              <button key={key} onClick={() => handleTheme(key)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors flex-1 justify-center ${
+                  theme === key ? 'bg-indigo-600 border-indigo-500 text-white' : 'btn-secondary'
+                }`}>
+                <Icon className="w-4 h-4"/> {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+            System automatically switches between light and dark based on your OS preference.
+          </p>
+        </div>
+      </div>
+
+      {/* Currency */}
+      <div className="card space-y-4">
+        <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Display Settings</h2>
+        <div>
+          <label className="label">Base Currency (all totals shown in this currency)</label>
           <select className="select w-auto" value={baseCurrency} onChange={e => setBaseCurrency(e.target.value)}>
             {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -74,133 +100,131 @@ function GeneralSettings() {
           <button onClick={saveCurrency} className="btn-primary flex items-center gap-2">
             <Save className="w-4 h-4"/> Save
           </button>
-          {settingsMsg && <span className="text-green-400 text-sm">{settingsMsg}</span>}
+          {settingsMsg && <span className="text-green-500 text-sm">{settingsMsg}</span>}
         </div>
       </div>
 
+      {/* Password */}
       <div className="card space-y-4">
-        <h2 className="font-semibold text-white">Change Password</h2>
-        <div><label className="label">Current Password</label>
-          <input type="password" className="input" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}/>
-        </div>
-        <div><label className="label">New Password</label>
-          <input type="password" className="input" value={newPassword} onChange={e => setNewPassword(e.target.value)}/>
-        </div>
+        <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Change Password</h2>
+        <div><label className="label">Current Password</label><input type="password" className="input" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}/></div>
+        <div><label className="label">New Password</label><input type="password" className="input" value={newPassword} onChange={e => setNewPassword(e.target.value)}/></div>
         <div className="flex items-center gap-3">
           <button onClick={changePassword} className="btn-primary">Change Password</button>
-          {pwMsg && <span className={pwMsg.includes('Error') ? 'text-red-400' : 'text-green-400'}>{pwMsg}</span>}
+          {pwMsg && <span className={`text-sm ${pwMsg.includes('Error') ? 'text-red-400' : 'text-green-500'}`}>{pwMsg}</span>}
         </div>
       </div>
     </div>
   )
 }
 
-function ScheduledSettings() {
-  const [payments, setPayments] = useState<ScheduledPayment[]>([])
-  const [showModal, setShowModal] = useState(false)
-  const [editP, setEditP] = useState<ScheduledPayment | null>(null)
+function TransactionsSettings() {
   const [accounts, setAccounts] = useState<Account[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
+  const [selectedAccountId, setSelectedAccountId] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [batchId, setBatchId] = useState('')
+  const [batches, setBatches] = useState<any[]>([])
+  const [preview, setPreview] = useState<{ count: number } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [msg, setMsg] = useState('')
 
-  const load = async () => {
-    const [p, a, c] = await Promise.all([scheduledApi.list(), accountsApi.list(), categoriesApi.all()])
-    setPayments(p.data); setAccounts(a.data); setCategories(c.data)
+  useEffect(() => {
+    accountsApi.list().then(r => setAccounts(r.data))
+    // Load import batches
+    fetch('/api/import/batches', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+      .then(r => r.json()).then(setBatches)
+  }, [])
+
+  const previewDelete = async () => {
+    const params = new URLSearchParams()
+    if (selectedAccountId) params.append('accountId', selectedAccountId)
+    if (startDate) params.append('startDate', startDate)
+    if (endDate) params.append('endDate', endDate)
+    if (batchId) params.append('importBatchId', batchId)
+
+    const res = await fetch(`/api/transactions/count?${params}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    })
+    const data = await res.json()
+    setPreview(data)
   }
-  useEffect(() => { load() }, [])
 
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="font-semibold text-white">Scheduled Payments</h2>
-        <button onClick={() => { setEditP(null); setShowModal(true) }} className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4"/> Add
-        </button>
-      </div>
-      <div className="card p-0 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead><tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
-            <th className="p-3 text-left">Name</th>
-            <th className="p-3 text-left">Account</th>
-            <th className="p-3 text-left">Due Day</th>
-            <th className="p-3 text-right">Amount</th>
-            <th className="p-3 w-20"/>
-          </tr></thead>
-          <tbody>
-            {payments.length === 0 ? (
-              <tr><td colSpan={5} className="p-6 text-center text-gray-600">No scheduled payments</td></tr>
-            ) : payments.map(p => (
-              <tr key={p.id} className="border-b border-gray-800/50">
-                <td className="p-3 text-white">{p.name}</td>
-                <td className="p-3 text-gray-400">{p.account?.name}</td>
-                <td className="p-3 text-gray-400">Day {p.dueDay}</td>
-                <td className="p-3 text-right text-red-400">{formatCurrency(p.amount, p.currency)}</td>
-                <td className="p-3 flex gap-2 justify-end">
-                  <button onClick={() => { setEditP(p); setShowModal(true) }} className="text-gray-600 hover:text-indigo-400"><Edit2 className="w-4 h-4"/></button>
-                  <button onClick={async () => { await scheduledApi.delete(p.id); load() }} className="text-gray-600 hover:text-red-400"><Trash2 className="w-4 h-4"/></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {showModal && (
-        <ScheduledModal payment={editP} accounts={accounts} categories={categories}
-          onClose={() => setShowModal(false)} onSave={() => { setShowModal(false); load() }}/>
-      )}
-    </div>
-  )
-}
+  const executeDelete = async () => {
+    if (!preview || preview.count === 0) return
+    if (!confirm(`Delete ${preview.count} transactions? This cannot be undone.`)) return
+    setDeleting(true)
+    const params = new URLSearchParams()
+    if (selectedAccountId) params.append('accountId', selectedAccountId)
+    if (startDate) params.append('startDate', startDate)
+    if (endDate) params.append('endDate', endDate)
+    if (batchId) params.append('importBatchId', batchId)
 
-function ScheduledModal({ payment, accounts, categories, onClose, onSave }: any) {
-  const [name, setName] = useState(payment?.name || '')
-  const [accountId, setAccountId] = useState(payment?.accountId?.toString() || accounts[0]?.id?.toString() || '')
-  const [categoryId, setCategoryId] = useState(payment?.categoryId?.toString() || '')
-  const [amount, setAmount] = useState(payment?.amount?.toString() || '')
-  const [currency, setCurrency] = useState(payment?.currency || 'EUR')
-  const [dueDay, setDueDay] = useState(payment?.dueDay?.toString() || '1')
-  const [saving, setSaving] = useState(false)
-
-  const handleSave = async () => {
-    if (!name || !amount || !accountId) return
-    setSaving(true)
-    const data = { name, accountId: +accountId, categoryId: categoryId ? +categoryId : undefined, amount: parseFloat(amount), currency, dueDay: +dueDay }
-    if (payment) await scheduledApi.update(payment.id, data)
-    else await scheduledApi.create(data)
-    setSaving(false); onSave()
+    await fetch(`/api/transactions/bulk-delete-filtered?${params}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    })
+    setMsg(`Deleted ${preview.count} transactions`)
+    setPreview(null)
+    setDeleting(false)
+    setTimeout(() => setMsg(''), 3000)
   }
 
   return (
-    <Modal title={payment ? 'Edit Payment' : 'Add Scheduled Payment'} onClose={onClose} size="sm">
-      <div className="space-y-3">
-        <div><label className="label">Name</label><input className="input" value={name} onChange={e => setName(e.target.value)} placeholder="Rent, Netflix..."/></div>
-        <div><label className="label">Account</label>
-          <select className="select" value={accountId} onChange={e => setAccountId(e.target.value)}>
-            {accounts.map((a: Account) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div><label className="label">Amount</label><input type="number" className="input" step="0.01" value={amount} onChange={e => setAmount(e.target.value)}/></div>
-          <div><label className="label">Currency</label>
-            <select className="select" value={currency} onChange={e => setCurrency(e.target.value)}>
-              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+    <div className="space-y-5">
+      <div className="card space-y-4">
+        <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Delete Transactions</h2>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          Filter transactions to delete. You can combine multiple filters. Preview first to see how many will be affected.
+        </p>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label">By Account (optional)</label>
+            <select className="select" value={selectedAccountId} onChange={e => setSelectedAccountId(e.target.value)}>
+              <option value="">All accounts</option>
+              {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </div>
+          <div>
+            <label className="label">By Import Batch (optional)</label>
+            <select className="select" value={batchId} onChange={e => setBatchId(e.target.value)}>
+              <option value="">All batches</option>
+              {batches.map((b: any) => (
+                <option key={b.id} value={b.id}>
+                  {b.filename} — {new Date(b.createdAt).toLocaleDateString()} ({b.importedRows} rows)
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Date From (optional)</label>
+            <input type="date" className="input" value={startDate} onChange={e => setStartDate(e.target.value)}/>
+          </div>
+          <div>
+            <label className="label">Date To (optional)</label>
+            <input type="date" className="input" value={endDate} onChange={e => setEndDate(e.target.value)}/>
+          </div>
         </div>
-        <div><label className="label">Due Day of Month</label>
-          <input type="number" min="1" max="31" className="input" value={dueDay} onChange={e => setDueDay(e.target.value)}/>
-        </div>
-        <div><label className="label">Category (optional)</label>
-          <select className="select" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
-            <option value="">None</option>
-            {categories.map((c: Category) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-          </select>
-        </div>
-        <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-          <button onClick={handleSave} disabled={saving || !name || !amount} className="btn-primary flex-1">{saving ? 'Saving...' : 'Save'}</button>
+
+        <div className="flex items-center gap-3">
+          <button onClick={previewDelete} className="btn-secondary">Preview</button>
+          {preview !== null && (
+            <>
+              <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                Found: <strong className={preview.count > 0 ? 'text-red-400' : 'text-green-500'}>{preview.count} transactions</strong>
+              </span>
+              {preview.count > 0 && (
+                <button onClick={executeDelete} disabled={deleting} className="btn-danger">
+                  {deleting ? 'Deleting...' : `Delete ${preview.count} transactions`}
+                </button>
+              )}
+            </>
+          )}
+          {msg && <span className="text-green-500 text-sm">{msg}</span>}
         </div>
       </div>
-    </Modal>
+    </div>
   )
 }
 
@@ -212,12 +236,11 @@ function DataSettings() {
     a.href = url; a.download = `myfinance-export-${new Date().toISOString().split('T')[0]}.json`
     a.click(); URL.revokeObjectURL(url)
   }
-
   return (
     <div className="space-y-4">
       <div className="card space-y-3">
-        <h2 className="font-semibold text-white">Export Data</h2>
-        <p className="text-sm text-gray-400">Download all your data as a JSON backup file.</p>
+        <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Export Data</h2>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Download all your data as a JSON backup file.</p>
         <button onClick={handleExport} className="btn-secondary flex items-center gap-2">
           <Download className="w-4 h-4"/> Export All Data
         </button>
