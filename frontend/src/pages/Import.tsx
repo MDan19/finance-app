@@ -371,8 +371,6 @@ export default function Import() {
                   </div>
                 ))}
               </div>
-                ))}
-              </div>
 
               {/* Import log */}
               {result.log && result.log.length > 0 && (
