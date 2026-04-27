@@ -359,15 +359,18 @@ export default function Import() {
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { label: 'Imported', value: result.imported, color: 'text-green-400', bg: 'bg-green-900/20 border-green-800/40' },
-                  { label: 'Transfers', value: result.transfers || 0, color: 'text-blue-400', bg: 'bg-blue-900/20 border-blue-800/40' },
-                  { label: 'Skipped (dup)', value: result.skipped, color: 'text-yellow-400', bg: 'bg-yellow-900/20 border-yellow-800/40' },
-                  { label: 'Need category', value: result.needsCategory, color: 'text-orange-400', bg: 'bg-orange-900/20 border-orange-800/40' },
+                  { label: 'Imported',      value: result.imported,          color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+                  { label: 'Transfers',     value: result.transfers || 0,    color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' },
+                  { label: 'Skipped (dup)', value: result.skipped,           color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+                  { label: 'Need category', value: result.needsCategory,     color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
                 ].map(s => (
-                  <div key={s.label} className={`border rounded-lg p-3 text-center ${s.bg}`}>
-                    <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
-                    <p className="text-xs text-gray-500 mt-1">{s.label}</p>
+                  <div key={s.label} className="rounded-lg p-3 text-center"
+                    style={{ background: s.bg, border: `1px solid ${s.border}` }}>
+                    <p className="text-3xl font-bold" style={{ color: s.color }}>{s.value}</p>
+                    <p className="text-xs mt-1 font-medium" style={{ color: '#374151' }}>{s.label}</p>
                   </div>
+                ))}
+              </div>
                 ))}
               </div>
 
