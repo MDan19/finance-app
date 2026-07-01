@@ -285,8 +285,21 @@ router.delete('/bulk-delete-filtered', async (req, res) => {
     if (importBatchId) where.importBatchId = +importBatchId
     if (startDate) where.date = { ...where.date, gte: new Date(startDate) }
     if (endDate) where.date = { ...where.date, lte: new Date(endDate + 'T23:59:59') }
-    const result = await prisma.transaction.deleteMany({ where })
-    res.json({ deleted: result.count })
+
+    let total = 0
+    while (true) {
+      const ids = await prisma.transaction.findMany({
+        where, select: { id: true }, take: 500,
+      })
+      if (ids.length === 0) break
+      await prisma.transaction.deleteMany({
+        where: { id: { in: ids.map(r => r.id) } }
+      })
+      total += ids.length
+      await new Promise(r => setTimeout(r, 100))
+    }
+
+    res.json({ deleted: total })
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete' })
   }
