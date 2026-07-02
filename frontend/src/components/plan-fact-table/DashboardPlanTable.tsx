@@ -34,7 +34,6 @@ const api = (path: string, opts?: RequestInit) =>
     },
   }).then(r => r.json())
 
-// Get column header date: "20.01.2026" format
 function getColDate(year: number, month: number): string {
   return `20.${String(month).padStart(2, '0')}.${year}`
 }
@@ -120,10 +119,7 @@ export default function DashboardPlanTable() {
   const getTotalIncome = (month: number) =>
     incomeSources.reduce((s, src) => s + getIncomeFact(src, month), 0)
 
-  // Visible months - show only months with data or all 12
   const months = Array.from({length: 12}, (_, i) => i + 1)
-
-  // Row numbering
   let rowNum = 0
 
   if (loading) return (
@@ -134,7 +130,6 @@ export default function DashboardPlanTable() {
 
   return (
     <div className="space-y-3">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Plan / Fact</h2>
@@ -154,11 +149,9 @@ export default function DashboardPlanTable() {
         </button>
       </div>
 
-      {/* Table */}
       <div className="card p-0 overflow-x-auto" style={{ background: 'var(--bg-card)' }}>
         <table className="w-full text-xs border-collapse" style={{ width: '100%', minWidth: `${150 + 60 + months.length * 100 + 100}px` }}>
           <thead>
-            {/* Month headers with dates */}
             <tr style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
               <th className="p-2 text-left w-6" style={{ color: 'var(--text-muted)', position: 'sticky', left: 0, background: 'var(--bg-secondary)', zIndex: 10 }}>№</th>
               <th className="p-2 text-left min-w-[160px]" style={{ color: 'var(--text-muted)', position: 'sticky', left: 24, background: 'var(--bg-secondary)', zIndex: 10 }}>Expense name</th>
@@ -171,9 +164,7 @@ export default function DashboardPlanTable() {
               <th colSpan={2} className="p-2 text-center" style={{ color: 'var(--text-muted)', borderLeft: '1px solid var(--border)', background: 'var(--bg-hover)' }}>
                 TOTAL fact
               </th>
-              <th className="p-1 w-8" style={{ background: 'var(--bg-secondary)' }}/>
             </tr>
-            {/* Plan/Fact sub-headers */}
             <tr style={{ background: 'var(--bg-secondary)', borderBottom: '2px solid var(--border)' }}>
               <th style={{ position: 'sticky', left: 0, background: 'var(--bg-secondary)', zIndex: 10 }}/>
               <th style={{ position: 'sticky', left: 24, background: 'var(--bg-secondary)', zIndex: 10 }}/>
@@ -186,7 +177,6 @@ export default function DashboardPlanTable() {
               ))}
               <th className="p-1 text-center font-normal" style={{ color: 'var(--text-muted)', borderLeft: '1px solid var(--border)', background: 'var(--bg-hover)' }}>Plan</th>
               <th className="p-1 text-center font-normal" style={{ color: 'var(--text-muted)', background: 'var(--bg-hover)' }}>Fact</th>
-              <th/>
             </tr>
           </thead>
           <tbody>
@@ -211,7 +201,6 @@ export default function DashboardPlanTable() {
               <td className="text-center" style={{ background: 'var(--bg-hover)', padding: '3px 4px', color: '#16a34a', fontWeight: 600 }}>
                 {fmt(months.reduce((s,m) => s + getTotalIncome(m), 0))}
               </td>
-              <td/>
             </tr>
 
             {incomeSources.length === 0 ? (
@@ -221,7 +210,7 @@ export default function DashboardPlanTable() {
                   — will appear after first income transaction —
                 </td>
                 {months.map(m => <><td key={`ie${m}a`} style={{ borderLeft: '1px solid var(--border)' }}/><td key={`ie${m}b`}/></>)}
-                <td style={{ borderLeft: '1px solid var(--border)', background: 'var(--bg-hover)' }}/><td style={{ background: 'var(--bg-hover)' }}/><td/>
+                <td style={{ borderLeft: '1px solid var(--border)', background: 'var(--bg-hover)' }}/><td style={{ background: 'var(--bg-hover)' }}/>
               </tr>
             ) : incomeSources.map(source => (
               <tr key={source} style={{ borderBottom: '1px solid var(--border)' }}
@@ -246,7 +235,6 @@ export default function DashboardPlanTable() {
                 <td className="text-center" style={{ background: 'var(--bg-hover)', color: '#16a34a', padding: '3px 4px' }}>
                   {fmt(months.reduce((s,m) => s + getIncomeFact(source, m), 0))}
                 </td>
-                <td/>
               </tr>
             ))}
 
@@ -256,7 +244,6 @@ export default function DashboardPlanTable() {
               if (groupItems.length === 0) return null
               return (
                 <>
-                  {/* Group header */}
                   <tr key={`g-${groupName}`} style={{ background: 'var(--bg-hover)', borderTop: '2px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
                     <td style={{ position: 'sticky', left: 0, background: 'var(--bg-hover)', zIndex: 5, padding: '6px 8px' }}/>
                     <td colSpan={2} style={{ position: 'sticky', left: 24, background: 'var(--bg-hover)', zIndex: 5, padding: '6px 8px', fontWeight: 700, color: '#f97316' }}>
@@ -278,10 +265,8 @@ export default function DashboardPlanTable() {
                     <td className="text-center" style={{ background: 'var(--bg-secondary)', padding: '3px 4px', color: '#16a34a', fontWeight: 700 }}>
                       {fmt(months.reduce((s,m) => s + getGroupTotal(groupName, m, 'fact'), 0))}
                     </td>
-                    <td style={{ background: 'var(--bg-hover)' }}/>
                   </tr>
 
-                  {/* Item rows */}
                   {groupItems.map(item => {
                     rowNum++
                     const num = rowNum
@@ -290,22 +275,28 @@ export default function DashboardPlanTable() {
                         className="group"
                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                        {/* Row number */}
                         <td className="text-center" style={{ position: 'sticky', left: 0, background: 'var(--bg-card)', zIndex: 5, padding: '3px 4px', color: 'var(--text-muted)', width: 24 }}>
                           {num}
                         </td>
-                        {/* Name */}
                         <td style={{ position: 'sticky', left: 24, background: 'var(--bg-card)', zIndex: 5, padding: '4px 8px' }}>
-                          <div className="flex items-center gap-1">
-                            <span style={{ color: 'var(--text-primary)' }}>{item.name}</span>
-                            {item.categoryId && <span style={{ color: '#7a5f2e', fontSize: 10 }}>●</span>}
-                            {item.keywordMatch && <span title={`keywords: ${item.keywordMatch}`} style={{ fontSize: 10 }}>🔑</span>}
+                          <div className="flex items-center justify-between gap-1">
+                            <div className="flex items-center gap-1 min-w-0">
+                              <span style={{ color: 'var(--text-primary)' }} className="truncate">{item.name}</span>
+                              {item.categoryId && <span style={{ color: '#7a5f2e', fontSize: 10 }}>●</span>}
+                              {item.keywordMatch && <span title={`keywords: ${item.keywordMatch}`} style={{ fontSize: 10 }}>🔑</span>}
+                            </div>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                              <button onClick={() => { setEditItem(item); setShowAddItem(true) }} style={{ color: 'var(--text-muted)' }} className="hover:text-amber-700">
+                                <Edit2 className="w-3 h-3"/>
+                              </button>
+                              <button onClick={() => deleteItem(item.id)} style={{ color: 'var(--text-muted)' }} className="hover:text-red-400">
+                                <Trash2 className="w-3 h-3"/>
+                              </button>
+                            </div>
                           </div>
                         </td>
-                        {/* Payment type */}
                         <td style={{ padding: '3px 4px', color: 'var(--text-muted)' }}>{item.paymentType}</td>
 
-                        {/* Month cells */}
                         {months.map(m => {
                           const plan = getPlan(item.id, m)
                           const fact = getFact(item.id, m)
@@ -342,24 +333,11 @@ export default function DashboardPlanTable() {
                           )
                         })}
 
-                        {/* Totals */}
                         <td className="text-center" style={{ borderLeft: '1px solid var(--border)', background: 'var(--bg-hover)', padding: '3px 4px', color: 'var(--text-secondary)' }}>
                           {fmt(getItemTotal(item.id, 'plan')) || '—'}
                         </td>
                         <td className="text-center" style={{ background: 'var(--bg-hover)', padding: '3px 4px', color: getItemTotal(item.id, 'fact') > 0 ? '#16a34a' : 'var(--text-muted)' }}>
                           {fmt(getItemTotal(item.id, 'fact')) || '—'}
-                        </td>
-
-                        {/* Actions */}
-                        <td style={{ padding: 4 }}>
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => { setEditItem(item); setShowAddItem(true) }} style={{ color: 'var(--text-muted)' }} className="hover:text-amber-700">
-                              <Edit2 className="w-3 h-3"/>
-                            </button>
-                            <button onClick={() => deleteItem(item.id)} style={{ color: 'var(--text-muted)' }} className="hover:text-red-400">
-                              <Trash2 className="w-3 h-3"/>
-                            </button>
-                          </div>
                         </td>
                       </tr>
                     )
@@ -368,7 +346,6 @@ export default function DashboardPlanTable() {
               )
             })}
 
-            {/* TOTAL ROW */}
             <tr style={{ borderTop: '2px solid var(--border-light)', background: 'var(--bg-hover)' }}>
               <td style={{ position: 'sticky', left: 0, background: 'var(--bg-hover)', zIndex: 5, padding: '6px 8px' }}/>
               <td colSpan={2} style={{ position: 'sticky', left: 24, background: 'var(--bg-hover)', zIndex: 5, padding: '6px 8px', fontWeight: 700, color: '#ef4444' }}>
@@ -390,13 +367,11 @@ export default function DashboardPlanTable() {
               <td className="text-center" style={{ background: 'var(--bg-secondary)', padding: '6px', fontWeight: 700, color: '#16a34a' }}>
                 {fmt(months.reduce((s,m) => s + getTotalExpense(m, 'fact'), 0))}
               </td>
-              <td/>
             </tr>
           </tbody>
         </table>
       </div>
 
-      {/* Add/Edit Modal */}
       {showAddItem && (
         <AddItemModal
           item={editItem}
@@ -419,8 +394,6 @@ function AddItemModal({ item, categories, onClose, onSave }: {
   const [categoryId, setCategoryId] = useState(item?.categoryId?.toString() || '')
   const [keywordMatch, setKeywordMatch] = useState(item?.keywordMatch || '')
   const [saving, setSaving] = useState(false)
-
-  const allGroups = [...EXPENSE_GROUPS, '__custom__']
 
   const handleSave = async () => {
     if (!name) return
