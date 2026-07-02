@@ -18,13 +18,13 @@
 }
 
 .light {
-  --bg-primary:    #f1f5f9;
-  --bg-secondary:  #ffffff;
-  --bg-card:       #ffffff;
-  --bg-hover:      #f8fafc;
-  --bg-input:      #f8fafc;
-  --border:        #e2e8f0;
-  --border-light:  #cbd5e1;
+  --bg-primary:    #f7f1e6;
+  --bg-secondary:  #fffcf6;
+  --bg-card:       #fffcf6;
+  --bg-hover:      #f2e9d8;
+  --bg-input:      #f2e9d8;
+  --border:        #e8dcc0;
+  --border-light:  #d8c7a0;
   --text-primary:  #0f172a;
   --text-secondary:#475569;
   --text-muted:    #64748b;
