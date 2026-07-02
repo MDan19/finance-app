@@ -74,7 +74,7 @@ export default function Transactions() {
     <div className="p-6 space-y-4 max-w-screen-xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Transactions</h1>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--brand)' }}>Transactions</h1>
           <p className="text-sm text-gray-500">{total} total</p>
         </div>
         <button onClick={() => { setEditTx(null); setShowModal(true) }}
