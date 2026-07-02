@@ -3,6 +3,7 @@ import multer from 'multer';
 import { prisma } from '../db/client';
 import { authenticate } from '../middleware/auth';
 import { getExchangeRate } from '../utils/exchange';
+import { updateAccountBalance } from './transactions';
 
 const router = Router();
 router.use(authenticate);
@@ -234,13 +235,33 @@ router.post('/execute', upload.single('file'), async (req, res) => {
     const insertData: any[] = [];
     let needsCategory = 0;
 
-    for (const row of toInsert) {
+for (const row of toInsert) {
       const dupKey = `${row.date.toDateString()}_${row.amount.toFixed(2)}_${row.description}`;
       if (existingSet.has(dupKey)) {
         skipped++;
         log.push(`Skipped duplicate: ${row.date.toDateString()} ${row.amount} ${row.description}`);
         continue;
       }
+
+      if (row.toAccountId) {
+        const dayStart = new Date(row.date.getFullYear(), row.date.getMonth(), row.date.getDate());
+        const dayEnd = new Date(row.date.getFullYear(), row.date.getMonth(), row.date.getDate(), 23, 59, 59);
+        const reverseExists = await prisma.transaction.findFirst({
+          where: {
+            accountId: row.toAccountId,
+            toAccountId: +accountId,
+            type: 'TRANSFER',
+            date: { gte: dayStart, lte: dayEnd },
+            amount: row.amount,
+          },
+        });
+        if (reverseExists) {
+          skipped++;
+          log.push(`Skipped — matched existing transfer from opposite side: ${row.date.toDateString()} ${row.amount}`);
+          continue;
+        }
+      }
+
       existingSet.add(dupKey); // prevent duplicates within import itself
 
       const rate = row.currency !== baseCurrency ? (rateCache[`${row.currency}_${baseCurrency}`] || 1) : 1;
@@ -278,10 +299,19 @@ router.post('/execute', upload.single('file'), async (req, res) => {
       imported += chunk.length;
     }
 
-    await prisma.importBatch.update({
-      where: { id: batch.id },
-      data: { importedRows: imported, skippedRows: skipped, status: 'done' },
-    });
+    const touchedAccountIds = new Set<number>();
+        insertData.forEach(r => {
+          touchedAccountIds.add(r.accountId);
+          if (r.toAccountId) touchedAccountIds.add(r.toAccountId);
+        });
+        for (const id of touchedAccountIds) {
+          await updateAccountBalance(id);
+        }
+    
+        await prisma.importBatch.update({
+          where: { id: batch.id },
+          data: { importedRows: imported, skippedRows: skipped, status: 'done' },
+        });
 
     res.json({
       batchId: batch.id,
