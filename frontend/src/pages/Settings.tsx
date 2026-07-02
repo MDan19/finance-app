@@ -26,7 +26,7 @@ export default function Settings() {
   const [tab, setTab] = useState<Tab>('general')
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Settings</h1>
+      <h1 className="text-2xl font-bold" style={{ color: 'var(--brand)' }}>Settings</h1>
       <div className="tab-bar w-fit">
         {([
           { key: 'general', label: 'General' },
