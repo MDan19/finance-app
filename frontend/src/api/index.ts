@@ -40,6 +40,7 @@ export const accountsApi = {
   create: (data: any) => api.post('/accounts', data),
   update: (id: number, data: any) => api.put(`/accounts/${id}`, data),
   delete: (id: number) => api.delete(`/accounts/${id}`),
+  deletePermanent: (id: number) => api.delete(`/accounts/${id}/permanent`),
 }
 
 // ── Transactions ──────────────────────────────
