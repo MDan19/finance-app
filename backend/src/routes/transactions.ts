@@ -15,11 +15,13 @@ router.get('/', async (req, res) => {
     } = req.query as Record<string, string>;
 
     const where: any = {};
+    const andConditions: any[] = [];
+
     if (startDate) where.date = { ...where.date, gte: new Date(startDate) };
     if (endDate) where.date = { ...where.date, lte: new Date(endDate + 'T23:59:59') };
     if (accountId) {
       const ids = accountId.split(',').map(Number);
-      where.accountId = { in: ids };
+      andConditions.push({ OR: [{ accountId: { in: ids } }, { toAccountId: { in: ids } }] });
     }
     if (categoryId) {
       const ids = categoryId.split(',').map(Number);
@@ -30,13 +32,16 @@ router.get('/', async (req, res) => {
       where.type = { in: types };
     }
     if (search) {
-      where.OR = [
-        { note: { contains: search, mode: 'insensitive' } },
-        { counterparty: { contains: search, mode: 'insensitive' } },
-      ];
+      andConditions.push({
+        OR: [
+          { note: { contains: search, mode: 'insensitive' } },
+          { counterparty: { contains: search, mode: 'insensitive' } },
+        ],
+      });
     }
     if (minAmount) where.amount = { ...where.amount, gte: parseFloat(minAmount) };
     if (maxAmount) where.amount = { ...where.amount, lte: parseFloat(maxAmount) };
+    if (andConditions.length) where.AND = andConditions;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const [transactions, total] = await Promise.all([
@@ -215,7 +220,7 @@ router.post('/bulk-categorize', async (req, res) => {
   res.json({ success: true });
 });
 
-async function updateAccountBalance(accountId: number) {
+export async function updateAccountBalance(accountId: number) {
   const account = await prisma.account.findUnique({ where: { id: accountId } });
   if (!account) return;
 
