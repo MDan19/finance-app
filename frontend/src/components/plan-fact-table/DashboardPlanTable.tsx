@@ -156,7 +156,7 @@ export default function DashboardPlanTable() {
 
       {/* Table */}
       <div className="card p-0 overflow-x-auto" style={{ background: 'var(--bg-card)' }}>
-        <table className="w-full text-xs border-collapse" style={{ minWidth: `${180 + 80 + months.length * 130 + 130}px` }}>
+        <table className="w-full text-xs border-collapse" style={{ width: '100%', minWidth: `${180 + 80 + months.length * 130 + 130}px` }}>
           <thead>
             {/* Month headers with dates */}
             <tr style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
