@@ -65,7 +65,7 @@ export default function Categories() {
   return (
     <div className="p-6 space-y-4 max-w-7xl mx-auto">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Categories & Analytics</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--brand)' }}>Categories & Analytics</h1>
         <button onClick={() => { setEditCat(null); setShowCatModal(true) }} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4"/> Add Category
         </button>
