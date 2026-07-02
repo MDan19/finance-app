@@ -139,11 +139,11 @@ export default function DashboardPlanTable() {
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Plan / Fact</h2>
           <div className="flex items-center gap-1">
-            <button onClick={() => setYear(y => y - 1)} className="p-1 hover:text-blue-400 transition-colors" style={{ color: 'var(--text-muted)' }}>
+            <button onClick={() => setYear(y => y - 1)} className="p-1 hover:text-amber-700 transition-colors" style={{ color: 'var(--text-muted)' }}>
               <ChevronLeft className="w-4 h-4"/>
             </button>
             <span className="text-sm font-medium px-2" style={{ color: 'var(--text-primary)' }}>{year}</span>
-            <button onClick={() => setYear(y => y + 1)} className="p-1 hover:text-blue-400 transition-colors" style={{ color: 'var(--text-muted)' }}>
+            <button onClick={() => setYear(y => y + 1)} className="p-1 hover:text-amber-700 transition-colors" style={{ color: 'var(--text-muted)' }}>
               <ChevronRight className="w-4 h-4"/>
             </button>
           </div>
@@ -298,7 +298,7 @@ export default function DashboardPlanTable() {
                         <td style={{ position: 'sticky', left: 24, background: 'var(--bg-card)', zIndex: 5, padding: '4px 8px' }}>
                           <div className="flex items-center gap-1">
                             <span style={{ color: 'var(--text-primary)' }}>{item.name}</span>
-                            {item.categoryId && <span style={{ color: '#0284c7', fontSize: 10 }}>●</span>}
+                            {item.categoryId && <span style={{ color: '#7a5f2e', fontSize: 10 }}>●</span>}
                             {item.keywordMatch && <span title={`keywords: ${item.keywordMatch}`} style={{ fontSize: 10 }}>🔑</span>}
                           </div>
                         </td>
@@ -317,7 +317,7 @@ export default function DashboardPlanTable() {
                                 {editingCell === key ? (
                                   <input
                                     type="text"
-                                    style={{ width: 72, background: 'rgba(2,132,199,0.15)', color: '#38bdf8', fontSize: 12, padding: '3px 6px', textAlign: 'center', outline: 'none', border: '1px solid #0284c7' }}
+                                    style={{ width: 72, background: 'rgba(122,95,46,0.15)', color: '#c9a05a', fontSize: 12, padding: '3px 6px', textAlign: 'center', outline: 'none', border: '1px solid #7a5f2e' }}
                                     value={cellValue}
                                     onChange={e => setCellValue(e.target.value)}
                                     onBlur={() => savePlan(item.id, m, cellValue)}
@@ -353,7 +353,7 @@ export default function DashboardPlanTable() {
                         {/* Actions */}
                         <td style={{ padding: 4 }}>
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => { setEditItem(item); setShowAddItem(true) }} style={{ color: 'var(--text-muted)' }} className="hover:text-blue-400">
+                            <button onClick={() => { setEditItem(item); setShowAddItem(true) }} style={{ color: 'var(--text-muted)' }} className="hover:text-amber-700">
                               <Edit2 className="w-3 h-3"/>
                             </button>
                             <button onClick={() => deleteItem(item.id)} style={{ color: 'var(--text-muted)' }} className="hover:text-red-400">
