@@ -156,7 +156,7 @@ export default function DashboardPlanTable() {
 
       {/* Table */}
       <div className="card p-0 overflow-x-auto" style={{ background: 'var(--bg-card)' }}>
-        <table className="w-full text-xs border-collapse" style={{ width: '100%', minWidth: `${180 + 80 + months.length * 130 + 130}px` }}>
+        <table className="w-full text-xs border-collapse" style={{ width: '100%', minWidth: `${150 + 60 + months.length * 100 + 100}px` }}>
           <thead>
             {/* Month headers with dates */}
             <tr style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
@@ -200,15 +200,15 @@ export default function DashboardPlanTable() {
                 const total = getTotalIncome(m)
                 return (
                   <>
-                    <td key={`igp${m}`} style={{ borderLeft: '1px solid var(--border)', padding: '4px 6px' }}/>
-                    <td key={`igf${m}`} className="text-center" style={{ color: total > 0 ? '#16a34a' : 'var(--text-muted)', padding: '4px 6px', fontWeight: total > 0 ? 600 : 400 }}>
+                    <td key={`igp${m}`} style={{ borderLeft: '1px solid var(--border)', padding: '3px 4px' }}/>
+                    <td key={`igf${m}`} className="text-center" style={{ color: total > 0 ? '#16a34a' : 'var(--text-muted)', padding: '3px 4px', fontWeight: total > 0 ? 600 : 400 }}>
                       {fmt(total)}
                     </td>
                   </>
                 )
               })}
-              <td style={{ borderLeft: '1px solid var(--border)', background: 'var(--bg-hover)', padding: '4px 6px' }}/>
-              <td className="text-center" style={{ background: 'var(--bg-hover)', padding: '4px 6px', color: '#16a34a', fontWeight: 600 }}>
+              <td style={{ borderLeft: '1px solid var(--border)', background: 'var(--bg-hover)', padding: '3px 4px' }}/>
+              <td className="text-center" style={{ background: 'var(--bg-hover)', padding: '3px 4px', color: '#16a34a', fontWeight: 600 }}>
                 {fmt(months.reduce((s,m) => s + getTotalIncome(m), 0))}
               </td>
               <td/>
@@ -236,14 +236,14 @@ export default function DashboardPlanTable() {
                   return (
                     <>
                       <td key={`ip${m}`} style={{ borderLeft: '1px solid var(--border)' }}/>
-                      <td key={`if${m}`} className="text-center" style={{ color: fact > 0 ? '#16a34a' : 'var(--text-muted)', padding: '4px 6px' }}>
+                      <td key={`if${m}`} className="text-center" style={{ color: fact > 0 ? '#16a34a' : 'var(--text-muted)', padding: '3px 4px' }}>
                         {fmt(fact)}
                       </td>
                     </>
                   )
                 })}
                 <td style={{ borderLeft: '1px solid var(--border)', background: 'var(--bg-hover)' }}/>
-                <td className="text-center" style={{ background: 'var(--bg-hover)', color: '#16a34a', padding: '4px 6px' }}>
+                <td className="text-center" style={{ background: 'var(--bg-hover)', color: '#16a34a', padding: '3px 4px' }}>
                   {fmt(months.reduce((s,m) => s + getIncomeFact(source, m), 0))}
                 </td>
                 <td/>
@@ -267,15 +267,15 @@ export default function DashboardPlanTable() {
                       const gf = getGroupTotal(groupName, m, 'fact')
                       return (
                         <>
-                          <td key={`gp${m}`} className="text-center" style={{ borderLeft: '1px solid var(--border)', padding: '4px 6px', color: '#f97316', fontWeight: 600 }}>{fmt(gp)}</td>
-                          <td key={`gf${m}`} className="text-center" style={{ padding: '4px 6px', color: gf > gp && gp > 0 ? '#ef4444' : gf > 0 ? '#16a34a' : 'var(--text-muted)', fontWeight: 600 }}>{fmt(gf)}</td>
+                          <td key={`gp${m}`} className="text-center" style={{ borderLeft: '1px solid var(--border)', padding: '3px 4px', color: '#f97316', fontWeight: 600 }}>{fmt(gp)}</td>
+                          <td key={`gf${m}`} className="text-center" style={{ padding: '3px 4px', color: gf > gp && gp > 0 ? '#ef4444' : gf > 0 ? '#16a34a' : 'var(--text-muted)', fontWeight: 600 }}>{fmt(gf)}</td>
                         </>
                       )
                     })}
-                    <td className="text-center" style={{ borderLeft: '1px solid var(--border)', background: 'var(--bg-secondary)', padding: '4px 6px', color: '#f97316', fontWeight: 700 }}>
+                    <td className="text-center" style={{ borderLeft: '1px solid var(--border)', background: 'var(--bg-secondary)', padding: '3px 4px', color: '#f97316', fontWeight: 700 }}>
                       {fmt(months.reduce((s,m) => s + getGroupTotal(groupName, m, 'plan'), 0))}
                     </td>
-                    <td className="text-center" style={{ background: 'var(--bg-secondary)', padding: '4px 6px', color: '#16a34a', fontWeight: 700 }}>
+                    <td className="text-center" style={{ background: 'var(--bg-secondary)', padding: '3px 4px', color: '#16a34a', fontWeight: 700 }}>
                       {fmt(months.reduce((s,m) => s + getGroupTotal(groupName, m, 'fact'), 0))}
                     </td>
                     <td style={{ background: 'var(--bg-hover)' }}/>
@@ -291,7 +291,7 @@ export default function DashboardPlanTable() {
                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                         {/* Row number */}
-                        <td className="text-center" style={{ position: 'sticky', left: 0, background: 'var(--bg-card)', zIndex: 5, padding: '4px 6px', color: 'var(--text-muted)', width: 24 }}>
+                        <td className="text-center" style={{ position: 'sticky', left: 0, background: 'var(--bg-card)', zIndex: 5, padding: '3px 4px', color: 'var(--text-muted)', width: 24 }}>
                           {num}
                         </td>
                         {/* Name */}
@@ -303,7 +303,7 @@ export default function DashboardPlanTable() {
                           </div>
                         </td>
                         {/* Payment type */}
-                        <td style={{ padding: '4px 6px', color: 'var(--text-muted)' }}>{item.paymentType}</td>
+                        <td style={{ padding: '3px 4px', color: 'var(--text-muted)' }}>{item.paymentType}</td>
 
                         {/* Month cells */}
                         {months.map(m => {
@@ -329,13 +329,13 @@ export default function DashboardPlanTable() {
                                   />
                                 ) : (
                                   <button
-                                    style={{ width: '100%', padding: '4px 6px', textAlign: 'center', color: plan > 0 ? 'var(--text-primary)' : 'var(--text-muted)', cursor: 'pointer' }}
+                                    style={{ width: '100%', padding: '3px 4px', textAlign: 'center', color: plan > 0 ? 'var(--text-primary)' : 'var(--text-muted)', cursor: 'pointer' }}
                                     onClick={() => { setEditingCell(key); setCellValue(plan > 0 ? plan.toString() : '') }}>
                                     {plan > 0 ? fmt(plan) : '—'}
                                   </button>
                                 )}
                               </td>
-                              <td key={`f${m}`} className="text-center" style={{ padding: '4px 6px', color: over ? '#ef4444' : fact > 0 ? '#16a34a' : 'var(--text-muted)', background: over ? 'rgba(239,68,68,0.06)' : 'transparent' }}>
+                              <td key={`f${m}`} className="text-center" style={{ padding: '3px 4px', color: over ? '#ef4444' : fact > 0 ? '#16a34a' : 'var(--text-muted)', background: over ? 'rgba(239,68,68,0.06)' : 'transparent' }}>
                                 {fact > 0 ? fmt(fact) : '—'}
                               </td>
                             </>
@@ -343,10 +343,10 @@ export default function DashboardPlanTable() {
                         })}
 
                         {/* Totals */}
-                        <td className="text-center" style={{ borderLeft: '1px solid var(--border)', background: 'var(--bg-hover)', padding: '4px 6px', color: 'var(--text-secondary)' }}>
+                        <td className="text-center" style={{ borderLeft: '1px solid var(--border)', background: 'var(--bg-hover)', padding: '3px 4px', color: 'var(--text-secondary)' }}>
                           {fmt(getItemTotal(item.id, 'plan')) || '—'}
                         </td>
-                        <td className="text-center" style={{ background: 'var(--bg-hover)', padding: '4px 6px', color: getItemTotal(item.id, 'fact') > 0 ? '#16a34a' : 'var(--text-muted)' }}>
+                        <td className="text-center" style={{ background: 'var(--bg-hover)', padding: '3px 4px', color: getItemTotal(item.id, 'fact') > 0 ? '#16a34a' : 'var(--text-muted)' }}>
                           {fmt(getItemTotal(item.id, 'fact')) || '—'}
                         </td>
 
