@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Edit2, Power, TrendingUp, TrendingDown, ArrowLeftRight, Calendar } from 'lucide-react'
 import { accountsApi, transactionsApi, scheduledApi, categoriesApi } from '../api'
 import { Account, AccountType, Transaction, ScheduledPayment, Category } from '../types'
-import { formatCurrency, formatEur, getAccountIcon, getAccountTypeLabel, ACCOUNT_TYPES, CURRENCIES } from '../utils/format'
+import { formatCurrency, formatEur, getAccountIcon, getAccountTypeLabel, CURRENCIES } from '../utils/format'
 import { formatDate, getTxTypeLabel, getTxTypeBadgeClass } from '../utils/format'
 import Modal from '../components/Modal'
 
@@ -27,6 +27,7 @@ export default function Accounts() {
   const [tab, setTab] = useState<AccTab>('overview')
   const [accounts, setAccounts] = useState<Account[]>([])
   const [showModal, setShowModal] = useState(false)
+  const [showManage, setShowManage] = useState(false)
   const [editAcc, setEditAcc] = useState<Account | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -48,12 +49,6 @@ export default function Accounts() {
     load()
   }
 
-  const handleDelete = async (acc: Account) => {
-    if (!confirm(`Delete account "${acc.name}"? This cannot be undone.`)) return
-    await accountsApi.delete(acc.id)
-    load()
-  }
-
   const active = accounts.filter(a => a.isActive)
   const inactive = accounts.filter(a => !a.isActive)
 
@@ -68,9 +63,12 @@ export default function Accounts() {
     <div className="p-6 space-y-5 max-w-screen-2xl mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--brand)' }}>Accounts</h1>
-        <button onClick={() => { setEditAcc(null); setShowModal(true) }} className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4"/> Add Account
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowManage(true)} className="btn-secondary">Manage</button>
+          <button onClick={() => { setEditAcc(null); setShowModal(true) }} className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4"/> Add Account
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -87,7 +85,6 @@ export default function Accounts() {
       {/* OVERVIEW TAB */}
       {tab === 'overview' && (
         <div className="space-y-5">
-          {/* Summary */}
           <div className="grid grid-cols-3 gap-4">
             <div className="card" style={{ borderColor: 'rgba(34,197,94,0.3)' }}>
               <div className="flex items-center gap-2 mb-1">
@@ -111,7 +108,6 @@ export default function Accounts() {
             </div>
           </div>
 
-          {/* Assets */}
           <div className="space-y-3">
             <h2 className="text-base font-semibold text-green-500">Assets</h2>
             {ASSET_GROUPS.map(group => {
@@ -121,14 +117,13 @@ export default function Accounts() {
                 <div key={group.label} className="space-y-2">
                   <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{group.label}</p>
                   <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-                    {grp.map(acc => <AccCard key={acc.id} account={acc} onEdit={() => { setEditAcc(acc); setShowModal(true) }} onDelete={() => handleDelete(acc) } onToggle={() => toggleActive(acc)}/>)}
+                    {grp.map(acc => <AccCard key={acc.id} account={acc} onEdit={() => { setEditAcc(acc); setShowModal(true) }} onToggle={() => toggleActive(acc)}/>)}
                   </div>
                 </div>
               )
             })}
           </div>
 
-          {/* Liabilities */}
           <div className="space-y-3">
             <h2 className="text-base font-semibold text-red-400">Liabilities</h2>
             {LIABILITY_GROUPS.map(group => {
@@ -138,19 +133,18 @@ export default function Accounts() {
                 <div key={group.label} className="space-y-2">
                   <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{group.label}</p>
                   <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-                    {grp.map(acc => <AccCard key={acc.id} account={acc} onEdit={() => { setEditAcc(acc); setShowModal(true) }} onDelete={() => handleDelete(acc)} onToggle={() => toggleActive(acc)}/>)}
+                    {grp.map(acc => <AccCard key={acc.id} account={acc} onEdit={() => { setEditAcc(acc); setShowModal(true) }} onToggle={() => toggleActive(acc)}/>)}
                   </div>
                 </div>
               )
             })}
           </div>
 
-          {/* Inactive */}
           {inactive.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Inactive / Closed</p>
               <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-                {inactive.map(acc => <AccCard key={acc.id} account={acc} inactive onEdit={() => { setEditAcc(acc); setShowModal(true) }} onDelete={() => handleDelete(acc)} onToggle={() => toggleActive(acc)}/>)}
+                {inactive.map(acc => <AccCard key={acc.id} account={acc} inactive onEdit={() => { setEditAcc(acc); setShowModal(true) }} onToggle={() => toggleActive(acc)}/>)}
               </div>
             </div>
           )}
@@ -165,12 +159,67 @@ export default function Accounts() {
           onClose={() => setShowModal(false)}
           onSave={() => { setShowModal(false); load() }}/>
       )}
+
+      {showManage && (
+        <ManageAccountsModal
+          accounts={accounts}
+          onClose={() => setShowManage(false)}
+          onChanged={load}
+        />
+      )}
     </div>
   )
 }
 
-function AccCard({ account, onEdit, onDelete, onToggle, inactive }: {
-  account: Account; onEdit: () => void; onDelete: () => void; onToggle: () => void; inactive?: boolean
+function ManageAccountsModal({ accounts, onClose, onChanged }: {
+  accounts: Account[]; onClose: () => void; onChanged: () => void
+}) {
+  const [error, setError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+
+  const handleDelete = async (acc: Account) => {
+    if (!confirm(`Permanently delete "${acc.name}"? This cannot be undone.`)) return
+    setDeletingId(acc.id); setError(null)
+    try {
+      await accountsApi.deletePermanent(acc.id)
+      onChanged()
+    } catch (e: any) {
+      setError(e.response?.data?.error || 'Failed to delete')
+    }
+    setDeletingId(null)
+  }
+
+  return (
+    <Modal title="Manage Accounts" onClose={onClose} size="lg">
+      <div className="space-y-2">
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {accounts.length === 0 && (
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No accounts.</p>
+        )}
+        {accounts.map(acc => (
+          <div key={acc.id} className="flex items-center justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+            <div>
+              <span style={{ color: 'var(--text-primary)' }}>{acc.name}</span>
+              <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>
+                {getAccountTypeLabel(acc.type)} · {acc.isActive ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            <button
+              onClick={() => handleDelete(acc)}
+              disabled={deletingId === acc.id}
+              className="btn-danger text-xs py-1 px-2"
+            >
+              {deletingId === acc.id ? 'Deleting...' : 'Delete permanently'}
+            </button>
+          </div>
+        ))}
+      </div>
+    </Modal>
+  )
+}
+
+function AccCard({ account, onEdit, onToggle, inactive }: {
+  account: Account; onEdit: () => void; onToggle: () => void; inactive?: boolean
 }) {
   const isLiability = ['CREDIT_CARD','LOAN_CONSUMER','LOAN_AUTO','MORTGAGE','PERSONAL_DEBT'].includes(account.type)
   const getBalance = () => {
@@ -202,7 +251,7 @@ function AccCard({ account, onEdit, onDelete, onToggle, inactive }: {
             <span className="text-green-500">Avail: {formatCurrency(Number(account.creditLimit)-balance, account.currency)}</span>
           </div>
           <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-hover)' }}>
-            <div className="h-full rounded-full" style={{ width: `${Math.min(100,account.creditLimit?(balance/Number(account.creditLimit))*100:0)}%`, backgroundColor: balance>Number(account.creditLimit??0)*0.8?'#ef4444':'#6366f1' }}/>
+            <div className="h-full rounded-full" style={{ width: `${Math.min(100,account.creditLimit?(balance/Number(account.creditLimit))*100:0)}%`, backgroundColor: balance>Number(account.creditLimit??0)*0.8?'#ef4444':'#96773a' }}/>
           </div>
         </div>
       )}
@@ -233,12 +282,6 @@ function AccCard({ account, onEdit, onDelete, onToggle, inactive }: {
           style={{ background: inactive ? undefined : 'var(--bg-hover)' }}
           title={inactive ? 'Reactivate' : 'Deactivate'}>
           <Power className="w-3.5 h-3.5"/>
-        </button>
-        <button onClick={onDelete}
-          className="px-2.5 py-1.5 rounded-lg text-xs text-red-400 transition-colors hover:bg-red-900/20"
-          style={{ background: 'var(--bg-hover)' }}
-          title="Delete permanently">
-          🗑
         </button>
       </div>
     </div>
