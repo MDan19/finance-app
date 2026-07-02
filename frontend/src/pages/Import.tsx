@@ -80,7 +80,7 @@ export default function Import() {
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold text-white">CSV Import</h1>
+      <h1 className="text-2xl font-bold" style={{ color: 'var(--brand)' }}>CSV Import</h1>
 
       <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1 w-fit flex-wrap">
         {([
