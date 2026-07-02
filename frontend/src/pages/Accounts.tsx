@@ -67,7 +67,7 @@ export default function Accounts() {
   return (
     <div className="p-6 space-y-5 max-w-screen-2xl mx-auto">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Accounts</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--brand)' }}>Accounts</h1>
         <button onClick={() => { setEditAcc(null); setShowModal(true) }} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4"/> Add Account
         </button>
