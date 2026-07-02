@@ -49,7 +49,7 @@ export default function Dashboard() {
   return (
     <div className="p-6 space-y-5 max-w-screen-2xl mx-auto">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Dashboard</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--brand)' }}>Dashboard</h1>
       </div>
 
       {/* Net Worth bar */}
