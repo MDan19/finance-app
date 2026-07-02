@@ -120,7 +120,7 @@ export default function Accounts() {
               return (
                 <div key={group.label} className="space-y-2">
                   <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{group.label}</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
                     {grp.map(acc => <AccCard key={acc.id} account={acc} onEdit={() => { setEditAcc(acc); setShowModal(true) }} onDelete={() => handleDelete(acc) } onToggle={() => toggleActive(acc)}/>)}
                   </div>
                 </div>
@@ -137,7 +137,7 @@ export default function Accounts() {
               return (
                 <div key={group.label} className="space-y-2">
                   <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{group.label}</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
                     {grp.map(acc => <AccCard key={acc.id} account={acc} onEdit={() => { setEditAcc(acc); setShowModal(true) }} onDelete={() => handleDelete(acc)} onToggle={() => toggleActive(acc)}/>)}
                   </div>
                 </div>
@@ -149,7 +149,7 @@ export default function Accounts() {
           {inactive.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Inactive / Closed</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
                 {inactive.map(acc => <AccCard key={acc.id} account={acc} inactive onEdit={() => { setEditAcc(acc); setShowModal(true) }} onDelete={() => handleDelete(acc)} onToggle={() => toggleActive(acc)}/>)}
               </div>
             </div>
