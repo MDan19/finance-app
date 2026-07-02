@@ -15,6 +15,7 @@
   --text-secondary:#9ca3af;
   --text-muted:    #6b7280;
   --shadow:        rgba(0,0,0,0.4);
+  --brand:         #96773a;
 }
 
 .light {
@@ -29,6 +30,7 @@
   --text-secondary:#475569;
   --text-muted:    #64748b;
   --shadow:        rgba(0,0,0,0.08);
+  --brand:         #96773a;
 }
 
 /* ── Base ────────────────────────────────────────────────────────────────── */
