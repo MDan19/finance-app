@@ -120,4 +120,18 @@ router.get('/:id/balance', async (req, res) => {
   });
 });
 
+router.delete('/:id/permanent', async (req, res) => {
+  try {
+    await prisma.account.delete({ where: { id: +req.params.id } });
+    res.json({ success: true });
+  } catch (err: any) {
+    if (err.code === 'P2003') {
+      return res.status(400).json({
+        error: 'Cannot delete: account has linked transactions. Delete them first via Settings → Transactions.',
+      });
+    }
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
 export default router;
