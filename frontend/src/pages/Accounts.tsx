@@ -189,30 +189,49 @@ function ManageAccountsModal({ accounts, onClose, onChanged }: {
     setDeletingId(null)
   }
 
+  const groups = [
+    { label: '🏦 Bank Accounts & Cash', types: ['BANK', 'CASH'] },
+    { label: '🤝 Personal Credits', types: ['PERSONAL_CREDIT'] },
+    { label: '💳 Credit Cards', types: ['CREDIT_CARD'] },
+    { label: '🏠 Mortgage', types: ['MORTGAGE'] },
+    { label: '🚗 Auto Loan', types: ['LOAN_AUTO'] },
+    { label: '💰 Consumer / Personal Loans', types: ['LOAN_CONSUMER'] },
+    { label: '👥 Private Debts', types: ['PERSONAL_DEBT'] },
+  ]
+
   return (
     <Modal title="Manage Accounts" onClose={onClose} size="lg">
-      <div className="space-y-2">
+      <div className="space-y-4 max-h-[60vh] overflow-y-auto">
         {error && <p className="text-red-500 text-sm">{error}</p>}
         {accounts.length === 0 && (
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No accounts.</p>
         )}
-        {accounts.map(acc => (
-          <div key={acc.id} className="flex items-center justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
-            <div>
-              <span style={{ color: 'var(--text-primary)' }}>{acc.name}</span>
-              <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>
-                {getAccountTypeLabel(acc.type)} · {acc.isActive ? 'Active' : 'Inactive'}
-              </span>
+        {groups.map(group => {
+          const grp = accounts.filter(a => group.types.includes(a.type))
+          if (!grp.length) return null
+          return (
+            <div key={group.label} className="space-y-1">
+              <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{group.label}</p>
+              {grp.map(acc => (
+                <div key={acc.id} className="flex items-center justify-between py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <div>
+                    <span style={{ color: 'var(--text-primary)' }}>{acc.name}</span>
+                    <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>
+                      {acc.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(acc)}
+                    disabled={deletingId === acc.id}
+                    className="btn-danger text-xs py-1 px-2"
+                  >
+                    {deletingId === acc.id ? 'Deleting...' : 'Delete permanently'}
+                  </button>
+                </div>
+              ))}
             </div>
-            <button
-              onClick={() => handleDelete(acc)}
-              disabled={deletingId === acc.id}
-              className="btn-danger text-xs py-1 px-2"
-            >
-              {deletingId === acc.id ? 'Deleting...' : 'Delete permanently'}
-            </button>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </Modal>
   )
