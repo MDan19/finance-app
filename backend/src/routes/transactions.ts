@@ -67,6 +67,49 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/count', async (req, res) => {
+  try {
+    const { accountId, startDate, endDate, importBatchId } = req.query as Record<string, string>
+    const where: any = {}
+    if (accountId) where.accountId = +accountId
+    if (importBatchId) where.importBatchId = +importBatchId
+    if (startDate) where.date = { ...where.date, gte: new Date(startDate) }
+    if (endDate) where.date = { ...where.date, lte: new Date(endDate + 'T23:59:59') }
+    const count = await prisma.transaction.count({ where })
+    res.json({ count })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to count' })
+  }
+})
+
+router.delete('/bulk-delete-filtered', async (req, res) => {
+  try {
+    const { accountId, startDate, endDate, importBatchId } = req.query as Record<string, string>
+    const where: any = {}
+    if (accountId) where.accountId = +accountId
+    if (importBatchId) where.importBatchId = +importBatchId
+    if (startDate) where.date = { ...where.date, gte: new Date(startDate) }
+    if (endDate) where.date = { ...where.date, lte: new Date(endDate + 'T23:59:59') }
+
+    let total = 0
+    while (true) {
+      const ids = await prisma.transaction.findMany({
+        where, select: { id: true }, take: 500,
+      })
+      if (ids.length === 0) break
+      await prisma.transaction.deleteMany({
+        where: { id: { in: ids.map(r => r.id) } }
+      })
+      total += ids.length
+      await new Promise(r => setTimeout(r, 100))
+    }
+
+    res.json({ deleted: total })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete' })
+  }
+})
+
 router.get('/:id', async (req, res) => {
   const tx = await prisma.transaction.findUnique({
     where: { id: +req.params.id },
@@ -87,7 +130,6 @@ router.post('/', async (req, res) => {
     const data = req.body;
     const baseCurrency = process.env.BASE_CURRENCY || 'EUR';
 
-    // Calculate EUR amount if needed
     let amountEur = data.amountEur;
     let exchangeRate = data.exchangeRate;
     if (!amountEur && data.currency !== baseCurrency) {
@@ -120,6 +162,8 @@ router.post('/', async (req, res) => {
         toCurrency: data.toCurrency || null,
         toExchangeRate: data.toExchangeRate || null,
         tags: data.tags || [],
+        principalAmount: data.principalAmount ?? null,
+        interestAmount: data.interestAmount ?? null,
       },
       include: {
         account: { select: { id: true, name: true, currency: true } },
@@ -127,9 +171,11 @@ router.post('/', async (req, res) => {
       },
     });
 
-    // Update account balances
     await updateAccountBalance(data.accountId);
-    if (data.toAccountId) await updateAccountBalance(data.toAccountId);
+    if (data.toAccountId) {
+      await updateAccountBalance(data.toAccountId);
+      await updateLoanRemaining(data.toAccountId);
+    }
 
     res.status(201).json(tx);
   } catch (err) {
@@ -174,6 +220,8 @@ router.put('/:id', async (req, res) => {
         toAmount: data.toAmount || null,
         toCurrency: data.toCurrency || null,
         tags: data.tags || [],
+        principalAmount: data.principalAmount ?? null,
+        interestAmount: data.interestAmount ?? null,
       },
       include: {
         account: { select: { id: true, name: true, currency: true } },
@@ -182,7 +230,10 @@ router.put('/:id', async (req, res) => {
     });
 
     await updateAccountBalance(data.accountId);
-    if (data.toAccountId) await updateAccountBalance(data.toAccountId);
+    if (data.toAccountId) {
+      await updateAccountBalance(data.toAccountId);
+      await updateLoanRemaining(data.toAccountId);
+    }
 
     res.json(tx);
   } catch (err) {
@@ -197,7 +248,10 @@ router.delete('/:id', async (req, res) => {
 
     await prisma.transaction.delete({ where: { id: +req.params.id } });
     await updateAccountBalance(tx.accountId);
-    if (tx.toAccountId) await updateAccountBalance(tx.toAccountId);
+    if (tx.toAccountId) {
+      await updateAccountBalance(tx.toAccountId);
+      await updateLoanRemaining(tx.toAccountId);
+    }
 
     res.json({ success: true });
   } catch (err) {
@@ -224,7 +278,6 @@ export async function updateAccountBalance(accountId: number) {
   const account = await prisma.account.findUnique({ where: { id: accountId } });
   if (!account) return;
 
-  // Calculate balance from transactions
   const income = await prisma.transaction.aggregate({
     where: { accountId, type: { in: ['INCOME', 'COMPENSATION'] } },
     _sum: { amount: true },
@@ -246,14 +299,12 @@ export async function updateAccountBalance(accountId: number) {
     _sum: { amount: true },
   });
 
-  const openingBalance = Number(account.currentBalance) || 0;
   const totalIncome = Number(income._sum.amount ?? 0);
   const totalExpense = Number(expense._sum.amount ?? 0);
   const totalTransferIn = Number(transferIn._sum.toAmount ?? 0);
   const totalTransferOut = Number(transferOut._sum.amount ?? 0);
   const totalRefunds = Number(refunds._sum.amount ?? 0);
 
-  // This is a running balance — for simplicity we just recompute from transactions
   const balance = totalIncome + totalTransferIn + totalRefunds - totalExpense - totalTransferOut;
 
   await prisma.account.update({
@@ -262,53 +313,22 @@ export async function updateAccountBalance(accountId: number) {
   });
 }
 
-// Add these two routes to backend/src/routes/transactions.ts
-// Place them BEFORE "export default router"
+export async function updateLoanRemaining(accountId: number) {
+  const account = await prisma.account.findUnique({ where: { id: accountId } });
+  if (!account || !['MORTGAGE', 'LOAN_CONSUMER', 'LOAN_AUTO'].includes(account.type)) return;
 
-// Count transactions by filter (for Settings preview)
-router.get('/count', async (req, res) => {
-  try {
-    const { accountId, startDate, endDate, importBatchId } = req.query as Record<string, string>
-    const where: any = {}
-    if (accountId) where.accountId = +accountId
-    if (importBatchId) where.importBatchId = +importBatchId
-    if (startDate) where.date = { ...where.date, gte: new Date(startDate) }
-    if (endDate) where.date = { ...where.date, lte: new Date(endDate + 'T23:59:59') }
-    const count = await prisma.transaction.count({ where })
-    res.json({ count })
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to count' })
-  }
-})
+  const paid = await prisma.transaction.aggregate({
+    where: { toAccountId: accountId, type: 'TRANSFER' },
+    _sum: { principalAmount: true },
+  });
 
-// Bulk delete by filter (for Settings)
-router.delete('/bulk-delete-filtered', async (req, res) => {
-  try {
-    const { accountId, startDate, endDate, importBatchId } = req.query as Record<string, string>
-    const where: any = {}
-    if (accountId) where.accountId = +accountId
-    if (importBatchId) where.importBatchId = +importBatchId
-    if (startDate) where.date = { ...where.date, gte: new Date(startDate) }
-    if (endDate) where.date = { ...where.date, lte: new Date(endDate + 'T23:59:59') }
+  const original = Number(account.originalAmount ?? 0);
+  const totalPrincipalPaid = Number(paid._sum.principalAmount ?? 0);
 
-    let total = 0
-    while (true) {
-      const ids = await prisma.transaction.findMany({
-        where, select: { id: true }, take: 500,
-      })
-      if (ids.length === 0) break
-      await prisma.transaction.deleteMany({
-        where: { id: { in: ids.map(r => r.id) } }
-      })
-      total += ids.length
-      await new Promise(r => setTimeout(r, 100))
-    }
-
-    res.json({ deleted: total })
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to delete' })
-  }
-})
-
+  await prisma.account.update({
+    where: { id: accountId },
+    data: { remainingAmount: Math.max(0, original - totalPrincipalPaid) },
+  });
+}
 
 export default router;
