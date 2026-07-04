@@ -191,17 +191,14 @@ export default function Transactions() {
                       checked={selected.includes(tx.id)} onChange={() => toggleSelect(tx.id)}/>
                   </td>
 
-                  {/* Date */}
                   <td className="p-3 text-gray-400 whitespace-nowrap">{formatDate(tx.date)}</td>
 
-                  {/* Type */}
                   <td className="p-3">
                     <span className={`${getTxTypeBadgeClass(tx.type)} whitespace-nowrap`}>
                       {TYPE_LABELS[tx.type]?.short} {getTxTypeLabel(tx.type)}
                     </span>
                   </td>
 
-                  {/* Account → Opposing Account */}
                   <td className="p-3">
                     <div className="flex items-center gap-1 text-xs">
                       <span className="text-gray-300 whitespace-nowrap max-w-[100px] truncate">
@@ -218,7 +215,6 @@ export default function Transactions() {
                     </div>
                   </td>
 
-                  {/* Description */}
                   <td className="p-3">
                     <div className="flex items-center gap-1">
                       {tx.linkedTransactionId && <Link className="w-3 h-3 text-gray-500 flex-shrink-0"/>}
@@ -231,7 +227,6 @@ export default function Transactions() {
                     )}
                   </td>
 
-                  {/* Category */}
                   <td className="p-3">
                     {tx.category ? (
                       <span className="flex items-center gap-1 text-xs whitespace-nowrap">
@@ -241,7 +236,6 @@ export default function Transactions() {
                     ) : <span className="text-gray-700">—</span>}
                   </td>
 
-                  {/* Tags */}
                   <td className="p-3">
                     <div className="flex flex-wrap gap-1 max-w-[120px]">
                       {((tx as any).tags || []).slice(0,2).map((tag: string) => (
@@ -257,7 +251,6 @@ export default function Transactions() {
                     </div>
                   </td>
 
-                  {/* Amount */}
                   <td className={`p-3 text-right font-medium whitespace-nowrap ${
                     tx.type==='INCOME'||tx.type==='COMPENSATION' ? 'text-green-400' :
                     tx.type==='EXPENSE' ? 'text-red-400' : 'text-blue-400'
@@ -267,12 +260,10 @@ export default function Transactions() {
                     {formatCurrency(tx.amount, tx.currency)}
                   </td>
 
-                  {/* EUR equivalent */}
                   <td className="p-3 text-right text-gray-500 text-xs whitespace-nowrap">
                     {tx.currency !== 'EUR' && tx.amountEur ? formatEur(tx.amountEur) : ''}
                   </td>
 
-                  {/* Delete */}
                   <td className="p-3">
                     <button onClick={e => { e.stopPropagation(); handleDelete(tx.id) }}
                       className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-all">
@@ -331,8 +322,13 @@ function TransactionModal({ tx, accounts, categories, onClose, onSave }: {
   const [exchangeRate, setExchangeRate] = useState(tx?.exchangeRate?.toString() || '')
   const [compensationSource, setCompensationSource] = useState(tx?.compensationSource || 'Other')
   const [tagsInput, setTagsInput] = useState(((tx as any)?.tags || []).join(', '))
+  const [principalAmount, setPrincipalAmount] = useState((tx as any)?.principalAmount?.toString() || '')
+  const [interestAmount, setInterestAmount] = useState((tx as any)?.interestAmount?.toString() || '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const toAccountObj = accounts.find(a => a.id === +toAccountId)
+  const isLoanPayment = type === 'TRANSFER' && !!toAccountObj && ['MORTGAGE','LOAN_CONSUMER','LOAN_AUTO'].includes(toAccountObj.type)
 
   useEffect(() => {
     if (currency !== 'EUR' && !exchangeRate) {
@@ -358,6 +354,8 @@ function TransactionModal({ tx, accounts, categories, onClose, onSave }: {
         compensationSource: type === 'COMPENSATION' ? compensationSource : undefined,
         toAccountId: type === 'TRANSFER' && toAccountId ? +toAccountId : undefined,
         tags: parseTags(tagsInput),
+        principalAmount: isLoanPayment && principalAmount ? parseFloat(principalAmount) : undefined,
+        interestAmount: isLoanPayment && interestAmount ? parseFloat(interestAmount) : undefined,
       }
       if (isEdit) await transactionsApi.update(tx!.id, data)
       else await transactionsApi.create(data)
@@ -406,6 +404,22 @@ function TransactionModal({ tx, accounts, categories, onClose, onSave }: {
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </select>
+          </div>
+        )}
+
+        {isLoanPayment && (
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="label">Principal</label>
+              <input type="number" className="input" step="0.01" placeholder="0.00"
+                value={principalAmount} onChange={e => setPrincipalAmount(e.target.value)}/>
+            </div>
+            <div><label className="label">Interest</label>
+              <input type="number" className="input" step="0.01" placeholder="0.00"
+                value={interestAmount} onChange={e => setInterestAmount(e.target.value)}/>
+            </div>
+            <p className="col-span-2 text-xs text-gray-500">
+              For early repayment: Interest = 0, Principal = full amount
+            </p>
           </div>
         )}
 
