@@ -181,6 +181,8 @@ model Transaction {
   compensationSource  String?         @map("compensation_source")
   toAccountId         Int?            @map("to_account_id")
   toAmount            Decimal?        @db.Decimal(20, 2) @map("to_amount")
+  principalAmount     Decimal?        @db.Decimal(20, 2) @map("principal_amount")
+  interestAmount      Decimal?        @db.Decimal(20, 2) @map("interest_amount")
   toCurrency          String?         @map("to_currency")
   toExchangeRate      Decimal?        @db.Decimal(20, 8) @map("to_exchange_rate")
   tags                String[]        @default([])
