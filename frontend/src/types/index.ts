@@ -14,7 +14,7 @@ export interface Account {
   openingDate?: string
   isActive: boolean
   notes?: string
-  currentBalance: number
+  openingBalance?: number
   creditLimit?: number
   currentDebt?: number
   originalAmount?: number
