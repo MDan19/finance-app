@@ -14,6 +14,7 @@ export interface Account {
   openingDate?: string
   isActive: boolean
   notes?: string
+  currentBalance: number
   openingBalance?: number
   creditLimit?: number
   currentDebt?: number
@@ -59,6 +60,9 @@ export interface Transaction {
   toAccountId?: number
   toAmount?: number
   toCurrency?: string
+  principalAmount?: number
+  interestAmount?: number
+  tags?: string[]
   account?: { id: number; name: string; currency: string; type: string }
   toAccount?: { id: number; name: string; currency: string }
   category?: Category
