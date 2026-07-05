@@ -3,7 +3,7 @@ import { Upload, Plus, Trash2, Check, AlertCircle, Info } from 'lucide-react'
 import { importApi, categoriesApi, accountsApi } from '../api'
 import { Category, Account } from '../types'
 
-type Step = 'upload' | 'map' | 'result'
+type Step = 'upload' | 'map' | 'dupcheck' | 'result'
 type Tab = 'import' | 'guide' | 'rules' | 'history'
 
 export default function Import() {
@@ -24,6 +24,8 @@ export default function Import() {
   const [result, setResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [duplicates, setDuplicates] = useState<any[]>([])
+  const [forceRows, setForceRows] = useState<Set<number>>(new Set())
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -36,7 +38,6 @@ export default function Import() {
     try {
       const res = await importApi.preview(f, delimiter)
       setPreview(res.data)
-      // Auto-detect columns by name
       const headers: string[] = res.data.headers
       const find = (...names: string[]) => headers.find(h => names.some(n => h.toLowerCase().includes(n.toLowerCase()))) || ''
       setColumnMap(m => ({
@@ -51,7 +52,6 @@ export default function Import() {
         category: find('category', 'categorie'),
         tags: find('tags', 'tag', 'labels'),
       }))
-      // Auto-detect two-column mode
       if (find('amount_debit', 'debit') && find('amount_credit', 'credit')) {
         setAmountMode('two')
       }
@@ -60,7 +60,24 @@ export default function Import() {
     finally { setLoading(false) }
   }
 
-  const handleImport = async () => {
+  const handleCheckDuplicates = async () => {
+    if (!file || !accountId) return
+    setLoading(true); setError('')
+    try {
+      const res = await importApi.previewDuplicates(file, accountId, { ...columnMap, amountMode }, delimiter)
+      if (res.data.duplicates.length === 0) {
+        await executeImport(new Set())
+      } else {
+        setDuplicates(res.data.duplicates)
+        setForceRows(new Set())
+        setStep('dupcheck')
+      }
+    } catch (e: any) {
+      setError(e.response?.data?.error || 'Failed to check duplicates')
+    } finally { setLoading(false) }
+  }
+
+  const executeImport = async (force: Set<number>) => {
     if (!file || !accountId) return
     setLoading(true); setError('')
     try {
@@ -68,12 +85,21 @@ export default function Import() {
         accountId,
         columnMap: { ...columnMap, amountMode },
         delimiter,
+        forceRows: JSON.stringify(Array.from(force)),
       })
       setResult(res.data)
       setStep('result')
     } catch (e: any) {
       setError(e.response?.data?.error || 'Import failed')
     } finally { setLoading(false) }
+  }
+
+  const toggleForce = (row: number) => {
+    setForceRows(s => {
+      const next = new Set(s)
+      if (next.has(row)) next.delete(row); else next.add(row)
+      return next
+    })
   }
 
   const setMap = (key: string, val: string) => setColumnMap(m => ({ ...m, [key]: val }))
@@ -100,25 +126,23 @@ export default function Import() {
 
       {tab === 'import' && (
         <div className="space-y-6">
-          {/* Steps */}
-          <div className="flex items-center gap-2">
-            {(['upload', 'map', 'result'] as Step[]).map((s, i) => (
+          <div className="flex items-center gap-2 flex-wrap">
+            {(['upload', 'map', 'dupcheck', 'result'] as Step[]).map((s, i) => (
               <div key={s} className="flex items-center gap-2">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
                   step === s ? 'bg-indigo-600 text-white' :
-                  ['upload','map','result'].indexOf(step) > i ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-500'
+                  ['upload','map','dupcheck','result'].indexOf(step) > i ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-500'
                 }`}>
-                  {['upload','map','result'].indexOf(step) > i ? <Check className="w-4 h-4"/> : i+1}
+                  {['upload','map','dupcheck','result'].indexOf(step) > i ? <Check className="w-4 h-4"/> : i+1}
                 </div>
                 <span className={`text-sm ${step === s ? 'text-white' : 'text-gray-500'}`}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                  {s === 'dupcheck' ? 'Duplicates' : s.charAt(0).toUpperCase() + s.slice(1)}
                 </span>
-                {i < 2 && <div className="w-8 h-px bg-gray-700"/>}
+                {i < 3 && <div className="w-8 h-px bg-gray-700"/>}
               </div>
             ))}
           </div>
 
-          {/* STEP 1: Upload */}
           {step === 'upload' && (
             <div className="card space-y-4">
               <div className="flex items-start gap-3 p-3 bg-indigo-900/20 border border-indigo-800/40 rounded-lg">
@@ -152,7 +176,6 @@ export default function Import() {
             </div>
           )}
 
-          {/* STEP 2: Map */}
           {step === 'map' && preview && (
             <div className="space-y-4">
               <div className="card space-y-5">
@@ -161,7 +184,6 @@ export default function Import() {
                   <span className="text-sm text-gray-500">{preview.totalRows} rows · {preview.headers.length} columns detected</span>
                 </div>
 
-                {/* Account */}
                 <div>
                   <label className="label">Account (this file belongs to)</label>
                   <select className="select" value={accountId} onChange={e => setAccountId(e.target.value)}>
@@ -169,7 +191,6 @@ export default function Import() {
                   </select>
                 </div>
 
-                {/* Required fields */}
                 <div className="border border-gray-700 rounded-lg p-4 space-y-3">
                   <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Required</p>
                   <div className="grid grid-cols-2 gap-3">
@@ -189,7 +210,6 @@ export default function Import() {
                     </div>
                   </div>
 
-                  {/* Amount mode */}
                   <div>
                     <label className="label">Amount format</label>
                     <div className="flex gap-3">
@@ -234,7 +254,6 @@ export default function Import() {
                   )}
                 </div>
 
-                {/* Optional fields */}
                 <div className="border border-gray-700 rounded-lg p-4 space-y-3">
                   <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Optional</p>
                   <div className="grid grid-cols-2 gap-3">
@@ -272,7 +291,6 @@ export default function Import() {
                   </div>
                 </div>
 
-                {/* Auto-detected notice */}
                 {Object.values(columnMap).some(v => v) && (
                   <div className="flex items-start gap-2 p-3 bg-green-900/20 border border-green-800/30 rounded-lg">
                     <Check className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5"/>
@@ -283,7 +301,6 @@ export default function Import() {
                 )}
               </div>
 
-              {/* Preview table */}
               <div className="card p-0 overflow-hidden">
                 <div className="p-3 border-b border-gray-800 flex items-center justify-between">
                   <p className="text-sm font-medium text-gray-400">Preview (first 20 rows)</p>
@@ -330,21 +347,87 @@ export default function Import() {
               <div className="flex gap-3">
                 <button onClick={() => { setStep('upload'); setPreview(null); setFile(null) }} className="btn-secondary">Back</button>
                 <button
-                  onClick={handleImport}
+                  onClick={handleCheckDuplicates}
                   disabled={loading || !columnMap.date || (amountMode === 'single' ? !columnMap.amount : !columnMap.amountDebit)}
                   className="btn-primary flex-1 flex items-center justify-center gap-2">
                   {loading ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
-                      Importing {preview.totalRows} rows...
+                      Checking...
                     </>
-                  ) : `Import ${preview.totalRows} rows`}
+                  ) : `Continue with ${preview.totalRows} rows`}
                 </button>
               </div>
             </div>
           )}
 
-          {/* STEP 3: Result */}
+          {step === 'dupcheck' && (
+            <div className="space-y-4">
+              <div className="card space-y-3">
+                <div className="flex items-start gap-3 p-3 bg-yellow-900/20 border border-yellow-800/40 rounded-lg">
+                  <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5"/>
+                  <p className="text-sm text-yellow-300">
+                    Found {duplicates.length} row(s) matching existing transactions or repeated within the file.
+                    They will be skipped by default. Check any row below to force-import it anyway.
+                  </p>
+                </div>
+                <div className="overflow-x-auto max-h-96 border border-gray-800 rounded-lg">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-900 sticky top-0">
+                      <tr>
+                        <th className="p-2 w-8"/>
+                        <th className="p-2 text-left text-gray-500">Row</th>
+                        <th className="p-2 text-left text-gray-500">Date</th>
+                        <th className="p-2 text-right text-gray-500">Amount</th>
+                        <th className="p-2 text-left text-gray-500">Description</th>
+                        <th className="p-2 text-left text-gray-500">Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {duplicates.map(d => (
+                        <tr key={d.row} className="border-b border-gray-800/50">
+                          <td className="p-2">
+                            <input type="checkbox" className="accent-indigo-500"
+                              checked={forceRows.has(d.row)} onChange={() => toggleForce(d.row)}/>
+                          </td>
+                          <td className="p-2 text-gray-500">{d.row}</td>
+                          <td className="p-2 text-gray-300">{d.date}</td>
+                          <td className="p-2 text-right text-gray-300">{d.amount}</td>
+                          <td className="p-2 text-gray-400 truncate max-w-[240px]">{d.description}</td>
+                          <td className="p-2 text-yellow-500">
+                            {d.reason === 'already_in_database' ? 'Already in DB' : 'Duplicate in file'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-900/20 border border-red-800/40 rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0"/>
+                  <p className="text-sm text-red-300">{error}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button onClick={() => setStep('map')} className="btn-secondary">Back</button>
+                <button onClick={() => executeImport(forceRows)} disabled={loading}
+                  className="btn-primary flex-1 flex items-center justify-center gap-2">
+                  {loading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                      Importing...
+                    </>
+                  ) : forceRows.size > 0
+                    ? `Import (${forceRows.size} forced, rest skipped)`
+                    : 'Skip all duplicates and import'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {step === 'result' && result && (
             <div className="card space-y-4">
               <div className="flex items-center gap-3">
@@ -372,7 +455,6 @@ export default function Import() {
                 ))}
               </div>
 
-              {/* Import log */}
               {result.log && result.log.length > 0 && (
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Skip log ({result.log.length} entries)</p>
@@ -385,7 +467,7 @@ export default function Import() {
               )}
 
               <div className="flex gap-3">
-                <button onClick={() => { setStep('upload'); setFile(null); setPreview(null); setResult(null) }}
+                <button onClick={() => { setStep('upload'); setFile(null); setPreview(null); setResult(null); setDuplicates([]); setForceRows(new Set()) }}
                   className="btn-secondary flex-1">Import Another File</button>
                 <a href="/transactions" className="btn-primary flex-1 text-center">View Transactions →</a>
               </div>
@@ -400,7 +482,6 @@ export default function Import() {
   )
 }
 
-// ── Format Guide ──────────────────────────────────────────────────────────────
 function FormatGuide() {
   return (
     <div className="space-y-4">
@@ -463,7 +544,6 @@ function Row({ label, value }: { label: string; value: string }) {
   )
 }
 
-// ── Keyword Rules ─────────────────────────────────────────────────────────────
 function KeywordRulesView({ categories }: { categories: Category[] }) {
   const [rules, setRules] = useState<any[]>([])
   const [keyword, setKeyword] = useState('')
@@ -520,7 +600,6 @@ function KeywordRulesView({ categories }: { categories: Category[] }) {
   )
 }
 
-// ── Import History ────────────────────────────────────────────────────────────
 function ImportHistoryView() {
   const [batches, setBatches] = useState<any[]>([])
   useEffect(() => { importApi.batches().then(r => setBatches(r.data)) }, [])
