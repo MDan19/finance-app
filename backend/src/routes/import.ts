@@ -214,7 +214,7 @@ router.post('/execute', upload.single('file'), async (req, res) => {
       }
 
       let amount: number;
-      let isExpense = true;
+      let isExpense = true; // true = debit / money OUT of the imported account, false = credit / money IN
 
       if (amountMode === 'two') {
         const debitRaw = columnMap.amountDebit ? row[columnMap.amountDebit] : '';
@@ -302,11 +302,13 @@ router.post('/execute', upload.single('file'), async (req, res) => {
         const dayEnd = new Date(row.date.getFullYear(), row.date.getMonth(), row.date.getDate(), 23, 59, 59);
         const reverseExists = await prisma.transaction.findFirst({
           where: {
-            accountId: row.toAccountId,
-            toAccountId: +accountId,
             type: 'TRANSFER',
             date: { gte: dayStart, lte: dayEnd },
             amount: row.amount,
+            OR: [
+              { accountId: +accountId, toAccountId: row.toAccountId },
+              { accountId: row.toAccountId, toAccountId: +accountId },
+            ],
           },
         });
         if (reverseExists) {
@@ -323,10 +325,24 @@ router.post('/execute', upload.single('file'), async (req, res) => {
 
       if (row.type !== 'TRANSFER' && !row.categoryId) needsCategory++;
 
+      // ── Direction fix ──────────────────────────────────────────────────────
+      // If this row is a TRANSFER and it's a CREDIT (money coming IN to the
+      // imported account from the opposing account), the actual source is the
+      // opposing account and the destination is the current account — not the
+      // other way around. Without this, incoming transfers get recorded as
+      // outgoing and get subtracted from the balance twice (wrong direction).
+      let finalAccountId = +accountId;
+      let finalToAccountId: number | null = row.toAccountId || null;
+
+      if (row.type === 'TRANSFER' && row.toAccountId && row.isExpense === false) {
+        finalAccountId = row.toAccountId;
+        finalToAccountId = +accountId;
+      }
+
       insertData.push({
         type: row.type,
         date: row.date,
-        accountId: +accountId,
+        accountId: finalAccountId,
         amount: row.amount,
         currency: row.currency,
         amountEur,
@@ -335,9 +351,9 @@ router.post('/execute', upload.single('file'), async (req, res) => {
         counterparty: row.description || null,
         source: 'csv_import',
         importBatchId: batch.id,
-        toAccountId: row.toAccountId || null,
-        toAmount: row.toAccountId ? row.amount : null,
-        toCurrency: row.toAccountId ? row.currency : null,
+        toAccountId: finalToAccountId,
+        toAmount: finalToAccountId ? row.amount : null,
+        toCurrency: finalToAccountId ? row.currency : null,
         tags: row.tags,
       });
 
