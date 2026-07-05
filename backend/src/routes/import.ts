@@ -9,7 +9,6 @@ const router = Router();
 router.use(authenticate);
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
-// ── Parse European number format ──────────────────────────────────────────────
 function parseAmount(raw: string): number {
   if (!raw || raw.trim() === '') return NaN;
   let s = raw.replace(/[€$£\s]/g, '');
@@ -30,7 +29,6 @@ function parseAmount(raw: string): number {
   return parseFloat(s);
 }
 
-// ── Parse date ────────────────────────────────────────────────────────────────
 function parseDate(raw: string): Date | null {
   if (!raw) return null;
   raw = raw.trim();
@@ -41,7 +39,6 @@ function parseDate(raw: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-// ── Split CSV line handling quotes ────────────────────────────────────────────
 function splitCsvLine(line: string, delimiter: string): string[] {
   const result: string[] = [];
   let current = '';
@@ -55,7 +52,6 @@ function splitCsvLine(line: string, delimiter: string): string[] {
   return result;
 }
 
-// ── Import profiles ───────────────────────────────────────────────────────────
 router.get('/profiles', async (_req, res) => {
   res.json(await prisma.importProfile.findMany({ orderBy: { name: 'asc' } }));
 });
@@ -70,7 +66,6 @@ router.delete('/profiles/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// ── Preview ───────────────────────────────────────────────────────────────────
 router.post('/preview', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
@@ -90,16 +85,81 @@ router.post('/preview', upload.single('file'), async (req, res) => {
   }
 });
 
+// ── Preview duplicates before executing import ────────────────────────────────
+router.post('/preview-duplicates', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const { accountId, columnMap: columnMapStr, delimiter: delimiterStr } = req.body;
+    const columnMap = JSON.parse(columnMapStr);
+    const delimiter = delimiterStr || ',';
+    const amountMode = columnMap.amountMode || 'single';
+
+    const content = req.file.buffer.toString('utf-8');
+    const lines = content.split('\n').filter(l => l.trim());
+    const headers = lines[0].split(delimiter).map((h: string) => h.trim().replace(/^"|"$/g, ''));
+
+    const existing = await prisma.transaction.findMany({
+      where: { accountId: +accountId },
+      select: { amount: true, counterparty: true, date: true },
+    });
+    const existingSet = new Set(existing.map(e =>
+      `${new Date(e.date).toDateString()}_${Number(e.amount).toFixed(2)}_${e.counterparty || ''}`
+    ));
+
+    const duplicates: any[] = [];
+    const seenInFile = new Set<string>();
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = splitCsvLine(lines[i], delimiter);
+      const row: Record<string, string> = {};
+      headers.forEach((h: string, idx: number) => { row[h] = values[idx] || ''; });
+
+      const dateRaw = columnMap.date ? row[columnMap.date] : '';
+      const description = columnMap.description ? row[columnMap.description] : '';
+      const date = parseDate(dateRaw);
+      if (!date) continue;
+
+      let amount = 0;
+      if (amountMode === 'two') {
+        const debit = parseAmount(columnMap.amountDebit ? row[columnMap.amountDebit] : '');
+        const credit = parseAmount(columnMap.amountCredit ? row[columnMap.amountCredit] : '');
+        amount = !isNaN(debit) && debit > 0 ? debit : (!isNaN(credit) ? credit : 0);
+      } else {
+        amount = Math.abs(parseAmount(columnMap.amount ? row[columnMap.amount] : ''));
+      }
+      if (!amount) continue;
+
+      const key = `${date.toDateString()}_${amount.toFixed(2)}_${description}`;
+      const reason = existingSet.has(key)
+        ? 'already_in_database'
+        : seenInFile.has(key)
+          ? 'duplicate_within_file'
+          : null;
+
+      if (reason) {
+        duplicates.push({ row: i, date: dateRaw, amount, description, reason });
+      }
+      seenInFile.add(key);
+    }
+
+    res.json({ totalRows: lines.length - 1, duplicates });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to preview duplicates' });
+  }
+});
+
 // ── Execute import (batch) ────────────────────────────────────────────────────
 router.post('/execute', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-    const { accountId, columnMap: columnMapStr, delimiter: delimiterStr } = req.body;
+    const { accountId, columnMap: columnMapStr, delimiter: delimiterStr, forceRows: forceRowsStr } = req.body;
     const columnMap = JSON.parse(columnMapStr);
     const delimiter = delimiterStr || ',';
     const amountMode = columnMap.amountMode || 'single';
     const baseCurrency = process.env.BASE_CURRENCY || 'EUR';
+    const forceRows = new Set<number>(forceRowsStr ? JSON.parse(forceRowsStr) : []);
 
     const content = req.file.buffer.toString('utf-8');
     const lines = content.split('\n').filter(l => l.trim());
@@ -113,7 +173,6 @@ router.post('/execute', upload.single('file'), async (req, res) => {
 
     if (!account) return res.status(404).json({ error: 'Account not found' });
 
-    // Cache exchange rates to avoid repeated API calls
     const rateCache: Record<string, number> = {};
     const getRate = async (from: string, to: string): Promise<number> => {
       if (from === to) return 1;
@@ -126,7 +185,6 @@ router.post('/execute', upload.single('file'), async (req, res) => {
       data: { filename: req.file.originalname, accountId: +accountId, totalRows: lines.length - 1, status: 'pending' },
     });
 
-    // Parse ALL rows first
     const toInsert: any[] = [];
     let skipped = 0;
     let transfers = 0;
@@ -155,7 +213,6 @@ router.post('/execute', upload.single('file'), async (req, res) => {
         skipped++; log.push(`Row ${i}: skipped — invalid date: ${dateRaw}`); continue;
       }
 
-      // Parse amount
       let amount: number;
       let isExpense = true;
 
@@ -175,10 +232,8 @@ router.post('/execute', upload.single('file'), async (req, res) => {
         amount = Math.abs(amount);
       }
 
-      // Parse tags
       const tags = tagsRaw ? tagsRaw.split(',').map((t: string) => t.trim().toLowerCase()).filter(Boolean) : [];
 
-      // Find opposing account for Transfer detection
       let toAccountId: number | undefined;
       if (opposingRaw && opposingRaw.trim()) {
         const matchedAccount = allAccounts.find(a =>
@@ -190,7 +245,6 @@ router.post('/execute', upload.single('file'), async (req, res) => {
         }
       }
 
-      // Auto-categorize by CSV category column first, then keywords
       let categoryId: number | null = null;
       if (!toAccountId) {
         if (categoryRaw) {
@@ -211,18 +265,17 @@ router.post('/execute', upload.single('file'), async (req, res) => {
       const type = toAccountId ? 'TRANSFER' : isExpense ? 'EXPENSE' : 'INCOME';
 
       toInsert.push({
+        originalIndex: i,
         date, amount, currency, description, categoryId, toAccountId,
         tags, type, isExpense,
       });
     }
 
-    // Fetch exchange rates for unique currencies (batch)
     const uniqueCurrencies = [...new Set(toInsert.map(r => r.currency).filter(c => c !== baseCurrency))];
     for (const cur of uniqueCurrencies) {
       await getRate(cur, baseCurrency);
     }
 
-    // Duplicate check: get existing transactions for this account
     const existing = await prisma.transaction.findMany({
       where: { accountId: +accountId },
       select: { amount: true, counterparty: true, date: true },
@@ -231,19 +284,20 @@ router.post('/execute', upload.single('file'), async (req, res) => {
       `${new Date(e.date).toDateString()}_${Number(e.amount).toFixed(2)}_${e.counterparty || ''}`
     ));
 
-    // Build insert data
     const insertData: any[] = [];
     let needsCategory = 0;
 
-for (const row of toInsert) {
+    for (const row of toInsert) {
       const dupKey = `${row.date.toDateString()}_${row.amount.toFixed(2)}_${row.description}`;
-      if (existingSet.has(dupKey)) {
+      const isForced = forceRows.has(row.originalIndex);
+
+      if (existingSet.has(dupKey) && !isForced) {
         skipped++;
         log.push(`Skipped duplicate: ${row.date.toDateString()} ${row.amount} ${row.description}`);
         continue;
       }
 
-      if (row.toAccountId) {
+      if (row.toAccountId && !isForced) {
         const dayStart = new Date(row.date.getFullYear(), row.date.getMonth(), row.date.getDate());
         const dayEnd = new Date(row.date.getFullYear(), row.date.getMonth(), row.date.getDate(), 23, 59, 59);
         const reverseExists = await prisma.transaction.findFirst({
@@ -262,7 +316,7 @@ for (const row of toInsert) {
         }
       }
 
-      existingSet.add(dupKey); // prevent duplicates within import itself
+      if (!isForced) existingSet.add(dupKey);
 
       const rate = row.currency !== baseCurrency ? (rateCache[`${row.currency}_${baseCurrency}`] || 1) : 1;
       const amountEur = row.amount * rate;
@@ -290,7 +344,6 @@ for (const row of toInsert) {
       if (row.toAccountId) transfers++;
     }
 
-    // Batch insert in chunks of 100
     const CHUNK = 100;
     let imported = 0;
     for (let i = 0; i < insertData.length; i += CHUNK) {
@@ -300,18 +353,18 @@ for (const row of toInsert) {
     }
 
     const touchedAccountIds = new Set<number>();
-        insertData.forEach(r => {
-          touchedAccountIds.add(r.accountId);
-          if (r.toAccountId) touchedAccountIds.add(r.toAccountId);
-        });
-        for (const id of touchedAccountIds) {
-          await updateAccountBalance(id);
-        }
-    
-        await prisma.importBatch.update({
-          where: { id: batch.id },
-          data: { importedRows: imported, skippedRows: skipped, status: 'done' },
-        });
+    insertData.forEach(r => {
+      touchedAccountIds.add(r.accountId);
+      if (r.toAccountId) touchedAccountIds.add(r.toAccountId);
+    });
+    for (const id of touchedAccountIds) {
+      await updateAccountBalance(id);
+    }
+
+    await prisma.importBatch.update({
+      where: { id: batch.id },
+      data: { importedRows: imported, skippedRows: skipped, status: 'done' },
+    });
 
     res.json({
       batchId: batch.id,
@@ -319,7 +372,7 @@ for (const row of toInsert) {
       skipped,
       transfers,
       needsCategory,
-      log: log.slice(0, 50), // return first 50 log entries
+      log,
     });
   } catch (err: any) {
     console.error('Import error:', err);
@@ -327,7 +380,6 @@ for (const row of toInsert) {
   }
 });
 
-// ── Keyword rules ─────────────────────────────────────────────────────────────
 router.get('/keyword-rules', async (_req, res) => {
   res.json(await prisma.keywordRule.findMany({ orderBy: [{ priority: 'desc' }, { keyword: 'asc' }] }));
 });
