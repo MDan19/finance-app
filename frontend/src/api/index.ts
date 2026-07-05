@@ -118,6 +118,14 @@ export const importApi = {
   updateKeywordRule: (id: number, data: any) => api.put(`/import/keyword-rules/${id}`, data),
   deleteKeywordRule: (id: number) => api.delete(`/import/keyword-rules/${id}`),
   batches: () => api.get('/import/batches'),
+  previewDuplicates: (file: File, accountId: string, columnMap: any, delimiter: string) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('accountId', accountId)
+    fd.append('columnMap', JSON.stringify(columnMap))
+    fd.append('delimiter', delimiter)
+    return api.post('/import/preview-duplicates', fd)
+  },
 }
 
 // ── Scheduled ────────────────────────────────
