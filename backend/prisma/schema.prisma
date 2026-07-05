@@ -52,6 +52,7 @@ model Account {
   isActive        Boolean     @default(true) @map("is_active")
   notes           String?
   currentBalance  Decimal     @default(0) @db.Decimal(20, 2) @map("current_balance")
+  openingBalance  Decimal     @default(0) @db.Decimal(20, 2) @map("opening_balance")
   creditLimit     Decimal?    @db.Decimal(20, 2) @map("credit_limit")
   currentDebt     Decimal?    @default(0) @db.Decimal(20, 2) @map("current_debt")
   originalAmount  Decimal?    @db.Decimal(20, 2) @map("original_amount")
