@@ -50,6 +50,7 @@ export const transactionsApi = {
   create: (data: any) => api.post('/transactions', data),
   update: (id: number, data: any) => api.put(`/transactions/${id}`, data),
   delete: (id: number) => api.delete(`/transactions/${id}`),
+  wipeAll: () => api.delete('/transactions/wipe-all'),
   bulkDelete: (ids: number[]) => api.post('/transactions/bulk-delete', { ids }),
   bulkCategorize: (ids: number[], categoryId: number) =>
     api.post('/transactions/bulk-categorize', { ids, categoryId }),
