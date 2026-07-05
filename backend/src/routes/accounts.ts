@@ -36,6 +36,7 @@ router.post('/', async (req, res) => {
         isActive: data.isActive ?? true,
         notes: data.notes,
         currentBalance: data.currentBalance ?? 0,
+        openingBalance: data.openingBalance ?? 0,
         creditLimit: data.creditLimit,
         currentDebt: data.currentDebt ?? 0,
         originalAmount: data.originalAmount,
@@ -69,6 +70,7 @@ router.put('/:id', async (req, res) => {
         isActive: data.isActive,
         notes: data.notes,
         currentBalance: data.currentBalance,
+        openingBalance: data.openingBalance ?? 0,
         creditLimit: data.creditLimit,
         currentDebt: data.currentDebt,
         originalAmount: data.originalAmount,
@@ -99,7 +101,6 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Get account balance summary for dashboard
 router.get('/:id/balance', async (req, res) => {
   const account = await prisma.account.findUnique({ where: { id: +req.params.id } });
   if (!account) return res.status(404).json({ error: 'Not found' });
