@@ -71,7 +71,6 @@ export default function Accounts() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="tab-bar w-fit">
         <button onClick={() => setTab('overview')} className={`tab-btn${tab==='overview'?' active':''}`}>Overview</button>
         <button onClick={() => setTab('transactions')} className={`tab-btn${tab==='transactions'?' active':''}`}>
@@ -82,7 +81,6 @@ export default function Accounts() {
         </button>
       </div>
 
-      {/* OVERVIEW TAB */}
       {tab === 'overview' && (
         <div className="space-y-5">
           <div className="grid grid-cols-3 gap-4">
@@ -494,6 +492,7 @@ function AccountModal({ account, onClose, onSave }: { account: Account | null; o
   const [form, setForm] = useState({
     name: account?.name || '', type: account?.type || 'BANK', currency: account?.currency || 'EUR',
     institution: account?.institution || '', currentBalance: account?.currentBalance?.toString() || '0',
+    openingBalance: account?.openingBalance?.toString() || '0',
     creditLimit: account?.creditLimit?.toString() || '', currentDebt: account?.currentDebt?.toString() || '0',
     originalAmount: account?.originalAmount?.toString() || '', remainingAmount: account?.remainingAmount?.toString() || '',
     monthlyPayment: account?.monthlyPayment?.toString() || '', interestRate: account?.interestRate?.toString() || '',
@@ -507,7 +506,18 @@ function AccountModal({ account, onClose, onSave }: { account: Account | null; o
 
   const handleSave = async () => {
     if (!form.name) return; setSaving(true)
-    const data: any = { ...form, currentBalance: parseFloat(form.currentBalance)||0, creditLimit: form.creditLimit?parseFloat(form.creditLimit):undefined, currentDebt: form.currentDebt?parseFloat(form.currentDebt):undefined, originalAmount: form.originalAmount?parseFloat(form.originalAmount):undefined, remainingAmount: form.remainingAmount?parseFloat(form.remainingAmount):undefined, monthlyPayment: form.monthlyPayment?parseFloat(form.monthlyPayment):undefined, interestRate: form.interestRate?parseFloat(form.interestRate):undefined, endDate: form.endDate||undefined }
+    const data: any = {
+      ...form,
+      currentBalance: parseFloat(form.currentBalance)||0,
+      openingBalance: parseFloat(form.openingBalance)||0,
+      creditLimit: form.creditLimit?parseFloat(form.creditLimit):undefined,
+      currentDebt: form.currentDebt?parseFloat(form.currentDebt):undefined,
+      originalAmount: form.originalAmount?parseFloat(form.originalAmount):undefined,
+      remainingAmount: form.remainingAmount?parseFloat(form.remainingAmount):undefined,
+      monthlyPayment: form.monthlyPayment?parseFloat(form.monthlyPayment):undefined,
+      interestRate: form.interestRate?parseFloat(form.interestRate):undefined,
+      endDate: form.endDate||undefined,
+    }
     if (account) await accountsApi.update(account.id, data)
     else await accountsApi.create(data)
     setSaving(false); onSave()
@@ -541,10 +551,18 @@ function AccountModal({ account, onClose, onSave }: { account: Account | null; o
           </div>
           <div><label className="label">Institution</label><input className="input" value={form.institution} onChange={e => set('institution',e.target.value)} placeholder="ABN AMRO, ING, Revolut..."/></div>
         </div>
-        {!isLoan && !isCard && !isPersonal && <div><label className="label">Current Balance</label><input type="number" className="input" step="0.01" value={form.currentBalance} onChange={e => set('currentBalance',e.target.value)}/></div>}
+
+        {!isLoan && !isCard && !isPersonal && (
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="label">Current Balance</label><input type="number" className="input" step="0.01" value={form.currentBalance} onChange={e => set('currentBalance',e.target.value)}/></div>
+            <div><label className="label">Opening Balance (before first import)</label><input type="number" className="input" step="0.01" value={form.openingBalance} onChange={e => set('openingBalance',e.target.value)}/></div>
+          </div>
+        )}
+
         {isCard && <div className="grid grid-cols-2 gap-3"><div><label className="label">Credit Limit</label><input type="number" className="input" step="0.01" value={form.creditLimit} onChange={e => set('creditLimit',e.target.value)}/></div><div><label className="label">Current Debt</label><input type="number" className="input" step="0.01" value={form.currentDebt} onChange={e => set('currentDebt',e.target.value)}/></div></div>}
         {isLoan && <div className="grid grid-cols-2 gap-3"><div><label className="label">Original Amount</label><input type="number" className="input" step="0.01" value={form.originalAmount} onChange={e => set('originalAmount',e.target.value)}/></div><div><label className="label">Remaining Amount</label><input type="number" className="input" step="0.01" value={form.remainingAmount} onChange={e => set('remainingAmount',e.target.value)}/></div><div><label className="label">Monthly Payment</label><input type="number" className="input" step="0.01" value={form.monthlyPayment} onChange={e => set('monthlyPayment',e.target.value)}/></div><div><label className="label">Interest Rate (%)</label><input type="number" className="input" step="0.01" value={form.interestRate} onChange={e => set('interestRate',e.target.value)}/></div><div><label className="label">End Date</label><input type="date" className="input" value={form.endDate} onChange={e => set('endDate',e.target.value)}/></div></div>}
         {isPersonal && <div className="grid grid-cols-2 gap-3"><div><label className="label">Person Name</label><input className="input" value={form.counterpartyName} onChange={e => set('counterpartyName',e.target.value)} placeholder="John Doe"/></div><div><label className="label">Amount</label><input type="number" className="input" step="0.01" value={form.currentBalance} onChange={e => set('currentBalance',e.target.value)}/></div></div>}
+
         <div><label className="label">Notes</label><input className="input" value={form.notes} onChange={e => set('notes',e.target.value)} placeholder="Optional..."/></div>
         <div className="flex gap-3 pt-2">
           <button onClick={onClose} className="btn-secondary flex-1">Cancel</button>
