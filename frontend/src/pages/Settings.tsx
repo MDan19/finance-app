@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Download, Save, Sun, Moon, Monitor } from 'lucide-react'
-import { settingsApi, authApi, accountsApi } from '../api'
+import { settingsApi, authApi, accountsApi, transactionsApi } from '../api'
 import { Account } from '../types'
 import { CURRENCIES } from '../utils/format'
 import { useAuthStore } from '../store/auth'
+
 type Theme = 'dark' | 'light' | 'system'
 
 function setTheme(theme: Theme) {
@@ -75,7 +76,6 @@ function GeneralSettings() {
 
   return (
     <div className="space-y-5">
-      {/* Theme */}
       <div className="card space-y-4">
         <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Appearance</h2>
         <div>
@@ -100,7 +100,6 @@ function GeneralSettings() {
         </div>
       </div>
 
-      {/* Currency */}
       <div className="card space-y-4">
         <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Display Settings</h2>
         <div>
@@ -117,7 +116,6 @@ function GeneralSettings() {
         </div>
       </div>
 
-      {/* Password */}
       <div className="card space-y-4">
         <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Change Password</h2>
         <div><label className="label">Current Password</label><input type="password" className="input" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}/></div>
@@ -141,10 +139,22 @@ function TransactionsSettings() {
   const [preview, setPreview] = useState<{ count: number } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [msg, setMsg] = useState('')
+  const [wipeConfirmText, setWipeConfirmText] = useState('')
+  const [wiping, setWiping] = useState(false)
+  const [wipeMsg, setWipeMsg] = useState('')
+
+  const handleWipeAll = async () => {
+    if (wipeConfirmText !== 'DELETE') return
+    if (!confirm('This deletes ALL transactions across all accounts. Final confirmation?')) return
+    setWiping(true)
+    const res = await transactionsApi.wipeAll()
+    setWipeMsg(`Deleted ${res.data.deleted} transactions`)
+    setWipeConfirmText('')
+    setWiping(false)
+  }
 
   useEffect(() => {
     accountsApi.list().then(r => setAccounts(r.data))
-    // Load import batches
     fetch('/api/import/batches', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
       .then(r => r.json()).then(setBatches)
   }, [])
@@ -236,6 +246,19 @@ function TransactionsSettings() {
           )}
           {msg && <span className="text-green-500 text-sm">{msg}</span>}
         </div>
+      </div>
+
+      <div className="card space-y-3" style={{ borderColor: '#ef4444' }}>
+        <h2 className="font-semibold text-red-500">Danger Zone</h2>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          Permanently delete ALL transactions across all accounts. Balances reset to 0.
+        </p>
+        <label className="label">Type DELETE to confirm</label>
+        <input className="input" value={wipeConfirmText} onChange={e => setWipeConfirmText(e.target.value)} placeholder="DELETE"/>
+        <button onClick={handleWipeAll} disabled={wipeConfirmText !== 'DELETE' || wiping} className="btn-danger">
+          {wiping ? 'Wiping...' : 'Wipe All Transactions'}
+        </button>
+        {wipeMsg && <p className="text-green-500 text-sm">{wipeMsg}</p>}
       </div>
     </div>
   )
