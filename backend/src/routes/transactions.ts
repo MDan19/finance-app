@@ -305,7 +305,7 @@ export async function updateAccountBalance(accountId: number) {
   const totalTransferOut = Number(transferOut._sum.amount ?? 0);
   const totalRefunds = Number(refunds._sum.amount ?? 0);
 
-  const balance = totalIncome + totalTransferIn + totalRefunds - totalExpense - totalTransferOut;
+  const balance = Number(account.openingBalance ?? 0) + totalIncome + totalTransferIn + totalRefunds - totalExpense - totalTransferOut;
 
   await prisma.account.update({
     where: { id: accountId },
