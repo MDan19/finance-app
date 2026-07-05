@@ -331,4 +331,14 @@ export async function updateLoanRemaining(accountId: number) {
   });
 }
 
+router.delete('/wipe-all', async (_req, res) => {
+  try {
+    const result = await prisma.transaction.deleteMany({});
+    await prisma.account.updateMany({ data: { currentBalance: 0, currentDebt: 0 } });
+    res.json({ deleted: result.count });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to wipe' });
+  }
+});
+
 export default router;
