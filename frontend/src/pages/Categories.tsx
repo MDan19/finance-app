@@ -7,6 +7,7 @@ import Modal from '../components/Modal'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts'
 
 type Tab = 'summary' | 'charts' | 'annual'
+type PeriodMode = 'month' | 'year' | 'all'
 
 export default function Categories() {
   const [tab, setTab] = useState<Tab>('summary')
@@ -17,35 +18,44 @@ export default function Categories() {
   const [selectedCat, setSelectedCat] = useState<any | null>(null)
   const [tagBreakdown, setTagBreakdown] = useState<any[]>([])
   const [tagLoading, setTagLoading] = useState(false)
+  const [periodMode, setPeriodMode] = useState<PeriodMode>('month')
   const [period, setPeriod] = useState(() => {
     const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`
   })
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
 
   const getEndDate = (ym: string) => {
     const [y,m] = ym.split('-').map(Number)
     return new Date(y,m,0).toISOString().split('T')[0]
   }
 
+  const getDateRange = () => {
+    if (periodMode === 'month') return { start: period+'-01', end: getEndDate(period) }
+    if (periodMode === 'year') return { start: `${selectedYear}-01-01`, end: `${selectedYear}-12-31` }
+    return { start: '2000-01-01', end: '2100-01-01' }
+  }
+
   const loadData = async () => {
+    const range = getDateRange()
     const [cats, sp] = await Promise.all([
       categoriesApi.all(),
-      analyticsApi.categoriesSpending({ startDate: period+'-01', endDate: getEndDate(period) }),
+      analyticsApi.categoriesSpending({ startDate: range.start, endDate: range.end }),
     ])
     setCategories(cats.data)
     setSpending(sp.data)
   }
 
-  useEffect(() => { loadData() }, [period])
+  useEffect(() => { loadData() }, [period, periodMode, selectedYear])
 
-  // Load tag breakdown when category is selected
   const handleCategoryClick = async (catData: any) => {
     if (catData.amount === 0) return
     setSelectedCat(catData)
     setTagLoading(true)
     try {
       const token = localStorage.getItem('token')
+      const range = getDateRange()
       const res = await fetch(
-        `/api/analytics/tag-breakdown?categoryId=${catData.category.id}&startDate=${period}-01&endDate=${getEndDate(period)}`,
+        `/api/analytics/tag-breakdown?categoryId=${catData.category.id}&startDate=${range.start}&endDate=${range.end}`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
       const data = await res.json()
@@ -71,9 +81,29 @@ export default function Categories() {
         </button>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <label className="label mb-0">Period</label>
-        <input type="month" className="input w-auto" value={period} onChange={e => setPeriod(e.target.value)}/>
+        <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1">
+          {(['month','year','all'] as PeriodMode[]).map(m => (
+            <button key={m} onClick={() => setPeriodMode(m)}
+              className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${periodMode===m ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+              {m === 'all' ? 'All time' : m}
+            </button>
+          ))}
+        </div>
+
+        {periodMode === 'month' && (
+          <input type="month" className="input w-auto" value={period} onChange={e => setPeriod(e.target.value)}/>
+        )}
+        {periodMode === 'year' && (
+          <div className="flex gap-1">
+            {[selectedYear-1, selectedYear, selectedYear+1].map(y => (
+              <button key={y} onClick={() => setSelectedYear(y)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium ${y===selectedYear ? 'bg-indigo-600 text-white' : 'btn-secondary'}`}>{y}</button>
+            ))}
+          </div>
+        )}
+
         <span className="text-sm text-gray-500">Total: <span className="text-white font-medium">{formatEur(totalSpend)}</span></span>
       </div>
 
@@ -88,7 +118,6 @@ export default function Categories() {
 
       {tab === 'summary' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Category list */}
           <div className="lg:col-span-2 card p-0 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -140,7 +169,6 @@ export default function Categories() {
             </table>
           </div>
 
-          {/* Tag breakdown panel */}
           <div className="card">
             {!selectedCat ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-12">
@@ -251,7 +279,6 @@ function AnnualPlanView({ categories }: { categories: Category[] }) {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
-
 
   const load = async () => {
     setLoading(true)
