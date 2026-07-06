@@ -21,6 +21,47 @@ function getTheme(): Theme {
   return (localStorage.getItem('theme') as Theme) || 'dark'
 }
 
+function CurrencyManager() {
+  const [currencies, setCurrencies] = useState<{code: string; name: string}[]>([])
+  const [newCode, setNewCode] = useState('')
+  const [newName, setNewName] = useState('')
+
+  const load = () => currencyApi.list().then(r => setCurrencies(r.data))
+  useEffect(() => { load() }, [])
+
+  const handleAdd = async () => {
+    if (!newCode || !newName) return
+    await currencyApi.create(newCode, newName)
+    setNewCode(''); setNewName(''); load()
+  }
+
+  const handleDelete = async (code: string) => {
+    if (!confirm(`Remove currency ${code}?`)) return
+    await currencyApi.delete(code)
+    load()
+  }
+
+  return (
+    <div className="card space-y-3">
+      <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Manage Currencies</h2>
+      <div className="flex gap-2">
+        <input className="input w-20" placeholder="UZS" maxLength={3} value={newCode} onChange={e => setNewCode(e.target.value.toUpperCase())}/>
+        <input className="input flex-1" placeholder="Uzbek Som" value={newName} onChange={e => setNewName(e.target.value)}/>
+        <button onClick={handleAdd} className="btn-primary">Add</button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {currencies.map(c => (
+          <span key={c.code} className="flex items-center gap-1 px-2 py-1 rounded" style={{ background: 'var(--bg-hover)' }}>
+            <span style={{ color: 'var(--text-primary)' }}>{c.code}</span>
+            <button onClick={() => handleDelete(c.code)} className="text-red-400 hover:text-red-300">×</button>
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+
 type Tab = 'general' | 'transactions' | 'data'
 
 export default function Settings() {
