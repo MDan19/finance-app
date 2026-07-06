@@ -33,6 +33,12 @@ export const authApi = {
     api.put('/auth/password', { currentPassword, newPassword }),
 }
 
+export const currencyApi = {
+  list: () => api.get('/currencies'),
+  create: (code: string, name: string) => api.post('/currencies', { code, name }),
+  delete: (code: string) => api.delete(`/currencies/${code}`),
+}
+
 // ── Accounts ─────────────────────────────────
 export const accountsApi = {
   list: () => api.get('/accounts'),
