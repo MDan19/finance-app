@@ -115,6 +115,7 @@ router.delete('/bulk-delete-filtered', async (req, res) => {
 router.delete('/wipe-all', async (_req, res) => {
   try {
     const result = await prisma.transaction.deleteMany({});
+    await prisma.importBatch.deleteMany({});
     await prisma.account.updateMany({
       data: { currentBalance: 0, currentDebt: 0, remainingAmount: 0 },
     });
