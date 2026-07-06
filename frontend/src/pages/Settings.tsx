@@ -143,15 +143,20 @@ function TransactionsSettings() {
   const [wiping, setWiping] = useState(false)
   const [wipeMsg, setWipeMsg] = useState('')
 
-  const handleWipeAll = async () => {
-    if (wipeConfirmText !== 'DELETE') return
-    if (!confirm('This deletes ALL transactions across all accounts. Final confirmation?')) return
-    setWiping(true)
+const handleWipeAll = async () => {
+  if (wipeConfirmText !== 'DELETE') return
+  if (!confirm('This deletes ALL transactions across all accounts. Final confirmation?')) return
+  setWiping(true)
+  try {
     const res = await transactionsApi.wipeAll()
     setWipeMsg(`Deleted ${res.data.deleted} transactions`)
     setWipeConfirmText('')
+  } catch (e: any) {
+    setWipeMsg(`Error: ${e.response?.data?.error || 'failed'}`)
+  } finally {
     setWiping(false)
   }
+}
 
   useEffect(() => {
     accountsApi.list().then(r => setAccounts(r.data))
