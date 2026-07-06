@@ -50,7 +50,9 @@ router.post('/', async (req, res) => {
         direction: data.direction,
       },
     });
-    res.status(201).json(account);
+    await updateAccountBalance(account.id);
+    const refreshed = await prisma.account.findUnique({ where: { id: account.id } });
+    res.status(201).json(refreshed);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create account' });
@@ -60,7 +62,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const data = req.body;
-    const account = await prisma.account.update({
+    await prisma.account.update({
       where: { id: +req.params.id },
       data: {
         name: data.name,
@@ -84,7 +86,9 @@ router.put('/:id', async (req, res) => {
         direction: data.direction,
       },
     });
-    res.json(account);
+    await updateAccountBalance(+req.params.id);
+    const refreshed = await prisma.account.findUnique({ where: { id: +req.params.id } });
+    res.json(refreshed);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update account' });
   }
