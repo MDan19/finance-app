@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Download, Save, Sun, Moon, Monitor } from 'lucide-react'
-import { settingsApi, authApi, accountsApi, transactionsApi } from '../api'
+import { settingsApi, authApi, accountsApi, transactionsApi, currencyApi } from '../api'
 import { Account } from '../types'
 import { CURRENCIES } from '../utils/format'
 import { useAuthStore } from '../store/auth'
