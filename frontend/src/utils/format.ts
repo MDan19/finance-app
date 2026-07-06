@@ -55,7 +55,7 @@ export function getTxTypeBadgeClass(type: TransactionType): string {
   return classes[type] || ''
 }
 
-export const CURRENCIES = ['EUR','USD','GBP','RUB','CHF','JPY','CNY','PLN','CZK','SEK','NOK','DKK','TRY','AED','CAD','AUD']
+export const CURRENCIES = ['EUR','USD','UZS','GBP','RUB','CHF','JPY','CNY','PLN','CZK','SEK','NOK','DKK','TRY','AED','CAD','AUD']
 
 export const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
   { value: 'BANK', label: '🏦 Bank Account' },
