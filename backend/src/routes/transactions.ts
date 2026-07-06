@@ -110,6 +110,21 @@ router.delete('/bulk-delete-filtered', async (req, res) => {
   }
 })
 
+// ── Wipe ALL transactions (Danger Zone in Settings) ───────────────────────────
+// MUST stay before any '/:id' route, otherwise Express matches 'wipe-all' as an id param.
+router.delete('/wipe-all', async (_req, res) => {
+  try {
+    const result = await prisma.transaction.deleteMany({});
+    await prisma.account.updateMany({
+      data: { currentBalance: 0, currentDebt: 0, remainingAmount: 0 },
+    });
+    res.json({ deleted: result.count });
+  } catch (err) {
+    console.error('Wipe error:', err);
+    res.status(500).json({ error: 'Failed to wipe' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   const tx = await prisma.transaction.findUnique({
     where: { id: +req.params.id },
@@ -330,15 +345,5 @@ export async function updateLoanRemaining(accountId: number) {
     data: { remainingAmount: Math.max(0, original - totalPrincipalPaid) },
   });
 }
-
-router.delete('/wipe-all', async (_req, res) => {
-  try {
-    const result = await prisma.transaction.deleteMany({});
-    await prisma.account.updateMany({ data: { currentBalance: 0, currentDebt: 0 } });
-    res.json({ deleted: result.count });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to wipe' });
-  }
-});
 
 export default router;
