@@ -257,3 +257,11 @@ model ScheduledPayment {
   updatedAt   DateTime @updatedAt @map("updated_at")
   @@map("scheduled_payments")
 }
+
+model Currency {
+  code      String @id @db.VarChar(3)
+  name      String
+  sortOrder Int    @default(0) @map("sort_order")
+
+  @@map("currencies")
+}
