@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../db/client';
 import { authenticate } from '../middleware/auth';
 import { Prisma } from '@prisma/client';
+import { updateAccountBalance } from './transactions';
 
 const router = Router();
 router.use(authenticate);
